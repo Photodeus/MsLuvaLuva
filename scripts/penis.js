@@ -41,7 +41,7 @@ var styles = [
 ];
 
 if (Math.random() < 0.1) {
-	response = param + " has no ding-dong at all!".replace(/\$item/, meats[Math.floor(Math.random()*meats.length)]);
+	response = param + " has no $item at all!".replace(/\$item/, meats[Math.floor(Math.random()*meats.length)]);
 } else {
 	response = styles[Math.floor(Math.random()*styles.length)]
 		.replace(/\$item/, meats[Math.floor(Math.random()*meats.length)])
