@@ -11,9 +11,16 @@ var responses = [
 	"You know what guys? Sometimes I think you all are a bit too gross.",
 	"You know what guys? Sometimes I think you all are a bit too explicit!",
 	"Can't we use words like 'Snuggle' instead of saying ****?",
-//	"- Tickle your ass with a feather? Huh? - I asked, \"Particulary nasty weather?\"",
+	//	"- Tickle your ass with a feather? Huh? - I asked, \"Particulary nasty weather?\"",
 ];
 
+var lnick = nick.toLowerCase();
 bot.getLog().info("gross by " + nick);
-response_to = '#Popmundo'
-response = responses[Math.floor(Math.random()*responses.length)];
+var last = bot.getValue("gross." + lnick)
+if (last && new Date().getTime() - last < 120000) {
+	bot.sendNotice(nick, "Once is enough, aight?");
+} else {
+	response_to = "#Popmundo";
+	response = responses[Math.floor(Math.random() * responses.length)];
+}
+bot.setValue("gross." + lnick, new Date().getTime())
