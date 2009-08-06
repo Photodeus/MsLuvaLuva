@@ -639,6 +639,7 @@ public class MsLuvaLuva extends PircBot implements Runnable {
 			bindings.remove(SCRIPTVAR_CANCEL);
 			bindings.remove(SCRIPTVAR_RESPONSE);
 			bindings.remove(SCRIPTVAR_RESPONSE_TO);
+			bindings.remove(SCRIPTVAR_NO_TIMEOUT);
 			try {
 				log.trace("Evaluating " + cmd);
 				csc.eval(bindings);
