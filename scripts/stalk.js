@@ -13,14 +13,16 @@ if (param == nick) {
 	if (time && msg) {
 		var datemsg = "";
 		var delta = (new Date().getTime() / 1000 - time);
-		if (delta <= 120) {
+		if (delta <= 60) {
 			datemsg = Math.round(delta) + " seconds ago";
 		} else if (delta < 60 * 60) {
-			datemsg = Math.round(delta / 60) + " minutes ago";
+			var m = Math.round(delta / 60);
+			var s = Math.round(delta) % 60;
+			datemsg = m + " min " + s + " sec ago";
 		} else {
-			var h = Math.round(delta / 60);
+			var h = Math.round(delta / 3600);
 			var m = Math.round(delta) % 60;
-			datemsg = h + " hours and " + m + " minutes ago";
+			datemsg = h + " h and " + m + " min ago";
 		}
 		response = param + " was seen " + datemsg + " saying \"" + msg + "\"";
 	} else {
