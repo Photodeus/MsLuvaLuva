@@ -2,7 +2,7 @@
 // @example !timeout 10
 bot.getLog().info(nick + " prefix: " + bot.getPrefix(channel, nick));
 lnick = nick.toLowerCase();
-if (lnick == 'maryjanelopes' || lnick == 'alanasanikonis' || lnick=='verarose' || lnick =='barendarets' || lnick=='brendaarets'
+if (lnick == 'maryjanelopes' || lnick == 'alanasanikonis' || lnick=='verarose' || lnick =='barendarets' || lnick=='brendaarets' || lnick == 'jarkkosohkanen'
    ||  bot.isOp(nick, channel) || bot.isOwner(nick, channel)) {
 	if (param.match(/\d+/)) {
 		var time = parseInt(param.match(/\d+/));
@@ -11,8 +11,9 @@ if (lnick == 'maryjanelopes' || lnick == 'alanasanikonis' || lnick=='verarose' |
 			bot.setTimeout(time * 1000);
 		}
 	} else {
-		bot.sendNotice(channel, "Command timeout is " + (bot.timeout/1000) + " seconds");
+		bot.sendMessage(channel, "Command timeout is " + (bot.timeout/1000) + " seconds");
 	}
 } else {
 	bot.sendNotice(nick, 'Are you op?');
 }
+no_timeout = true;
