@@ -13,13 +13,9 @@ bot.setValue("seen." + lnick + ".time", Math.round(new Date().getTime() / 1000))
 bot.setValue("seen." + lnick + ".msg", message);
 
 if (nick == 'Bot' || nick == 'MsLuvaLuva') {
-
+	// Do nothing
 } else {
-	//var isBad = (lnick.indexOf("mib_") == 0 || lnick.length < 4 || lnick.match(/[0-9]/g));
-	// [A-Z][a-z]+[A-Z][a-z]+
-	var onecapital = lnick.match(/^[A-Z][a-z]+$/);
 	var isBad = lnick.match(/[0-9]|^[A-Z][a-z]+$/) || lnick.length < 4;
-	//bot.getLog().info(nick + " ==> " + onecapital);
 	if (isBad) {
 		var examples = {
 			'JoseTurdot' : 'José Türdöt',
@@ -43,9 +39,8 @@ if (nick == 'Bot' || nick == 'MsLuvaLuva') {
 		if (count % 4 == 0) {
 			var example = "Example: " + bad + " would be " + BOLD + "/nick " + good + BOLD + " (only a-z and no spaces)";
 			bot.sendNotice(nick,
-					"Please write " +
-					BOLD + "/nick FirstnameLastname" + BOLD +
-					" You must use your Popmundo name. " + example);
+					"Please write " + BOLD + "/nick FirstnameLastname" + BOLD +
+					" You must use your Popmundo name in this chat. " + example);
 		}
 		++count;
 		bot.setValue(keyy, count);
@@ -69,7 +64,7 @@ if (nick == 'Bot' || nick == 'MsLuvaLuva') {
 			if (warning.count % 8 == 0) {
 				bot.getLog().info(nick + " warning count: " + warning.count);
 				var w = [
-					"$nick, fix your nick...",
+					"$nick, please fix your nick...",
 					"$nick, fix your nick... <3",
 					"$nick, are you away or are you here? Your nickname says you are away.",
 					"$nick, should you stay or should you go?",
@@ -79,7 +74,7 @@ if (nick == 'Bot' || nick == 'MsLuvaLuva') {
 				//bot.sendMessage(channel, nick + ", go away since you're already pretending to be away. Or fix your nick <3");
 				bot.sendMessage(channel, line.replace(/\$nick/, nick));
 			} else if (warning.count == 20) {
-				bot.sendMessage(channel, nick + ", go away or fix your nickname!");
+				bot.sendMessage(channel, nick + ", go away or fix your nickname! NOW!");
 			} else if (warning.count == 30) {
 				bot.sendMessage(channel, nick + ", go away and stay away!");
 			}
