@@ -1,9 +1,7 @@
 var BOLD = String.fromCharCode(2);
 var lnick = ""+nick.toLowerCase();
 
-//var onecapital = lnick.match(/^[A-Z][a-z]+$/);
-var isBad = lnick.match(/^mib_/);
-
+var isBad = nick.match(/^mib_|^[A-Z][a-z]+$|^[a-z]+$/);
 if (isBad) {
 	var examples = {
 		'JoseOTurdot' : "José O'Türdöt",
@@ -21,14 +19,14 @@ if (isBad) {
 		++i;
 	}
 	var keyy = 'badnick.'+ident+host;
-	var example = "Example: "+bad+" would be "+BOLD+"/nick "+good+BOLD;
-	bot.sendNotice(nick, "Welcome Mibbit user! Your nickname seems to be improper and needs to be fixed.");
-	bot.sendNotice(nick, "To change your nickname, please write " + BOLD + "/nick FirstnameLastname" + BOLD +
-					 " Channel rule is that you "+BOLD+"must"+BOLD+" use your Popmundo name. " + example +
-					" Only A-Z and a-z allowed. No spaces :)");
+	var example = "Example: \""+bad+"\" would be "+BOLD+"/nick "+good+BOLD;
+	API.notice(nick, "Welcome " + nick +"! Your nickname seems to be improperly written and needs to be fixed if you wish to remain in chat. " +
+					 "To change your nickname, please write " + BOLD + "/nick FirstnameLastname" + BOLD);
+	API.notice(nick,  "Channel rule is that you "+BOLD+"must"+BOLD+" use your "+BOLD+"Popmundo"+BOLD+" name. " + 
+					example + " Only A-Z allowed. No spaces, no accents. If in doubt, ask the operators for help. Thanks and have a good chat! :)");
 	/*
-	bot.sendMessage(channel, "Welcome Mibbit user! Your nickname seems to be improper and needs to be fixed.");
-	bot.sendMessage(channel, "To change your nickname, please write " + BOLD + "/nick FirstnameLastname" + BOLD +
+	API.say(channel, "Welcome Mibbit user! Your nickname seems to be improper and needs to be fixed.");
+	API.say(channel, "To change your nickname, please write " + BOLD + "/nick FirstnameLastname" + BOLD +
 					 " Channel rule is that you "+BOLD+"must"+BOLD+" use your Popmundo name. " + example +
 					" Only A-Z and a-z allowed. No spaces :)");
 	*/

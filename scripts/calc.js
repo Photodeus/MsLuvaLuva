@@ -1,9 +1,9 @@
 // @description Calculates given expression
 // @example  !calc 4.5*(12-5/8)
 //var filtered = ""+param.match( /[0-9.\/\+\-\*\(\) \^\&\|\<\>xa-fA-F]+/ );
-var filtered = ""+param.match( /[0-9.\/\+\-\*\(\) \^!e%]+/ );
+var filtered = ""+param.match( /[0-9.a-fA-F\/\+\-\*\(\) \^e%x]+/ );
 if (filtered.indexOf('^') > 0) {
-	filtered = filtered.replace( /(.+)\^(.+)/, 'Math.pow($1, $2)' );
+	filtered = filtered.replace( /(.+?)\^(.+?)/g, 'Math.pow($1, $2)' );
 }
 //filtered = param;
 var r = null;

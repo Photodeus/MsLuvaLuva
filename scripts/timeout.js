@@ -1,19 +1,18 @@
 // @description Op command only. Allows to set the minimum timeout in seconds between bot commands
-// @example !timeout 10
-bot.getLog().info(nick + " prefix: " + bot.getPrefix(channel, nick));
-lnick = nick.toLowerCase();
-if (lnick == 'maryjanelopes' || lnick == 'alanasanikonis' || lnick=='verarose' || lnick =='barendarets' || lnick=='brendaarets' || lnick == 'jarkkosohkanen'
-   ||  bot.isOp(nick, channel) || bot.isOwner(nick, channel)) {
+// @example !timeout 10 *
+// @example !timeout 10 command
+// @notimeout
+if (API.isOp(channel, nick) || API.isOwner(channel, nick) || API.isAdmin(channel, nick)) {
 	if (param.match(/\d+/)) {
 		var time = parseInt(param.match(/\d+/));
 		if (time > 0 && time <= 120) {
-			bot.sendNotice(nick, "Ok: Setting command timeout to " + time + " seconds");
-			bot.setTimeout(time * 1000);
+			API.notice(nick, "Ok: Setting command timeout to " + time + " seconds");
+			API.setTimeout(time * 1000);
+			no_timeout = true;
 		}
 	} else {
-		bot.sendMessage(channel, "Command timeout is " + (bot.timeout/1000) + " seconds");
+		API.say(channel, "Command timeout is " + (API.timeout / 1000) + " seconds");
 	}
 } else {
-	bot.sendNotice(nick, 'Are you op?');
+	API.notice(nick, 'Not enough privileges to do that.');
 }
-no_timeout = true;

@@ -19,7 +19,6 @@ var words = [
 	"forehead",
 	"tongue",
 	"arm",
-	/*
 	"toe",
 	"hip",
 	"nose",
@@ -44,7 +43,6 @@ var words = [
 	"ball",
 	"hairy ball",
 	"shaved ball",
-*/
 	"****",
 	"alligator",
 	"fish",
@@ -99,6 +97,7 @@ var actions = [
 //	"fapping",
 	"f***ing",
 	"sucking",
+*/
 	"french kissing",
 	"bondage",
 	"slapping",
@@ -122,7 +121,6 @@ var actions = [
 	"groping",
 	"shaking",
 	//"shaving",
-*/
 	"kicking",
 	"pinching",
 	"sponge washing",

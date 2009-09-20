@@ -1,21 +1,15 @@
 package com.popodeus.chat;
 
-import com.sun.script.javascript.RhinoScriptEngine;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.jibble.pircbot.NickAlreadyInUseException;
 import org.jibble.pircbot.PircBot;
 import org.jibble.pircbot.User;
 
-import javax.script.Bindings;
-import javax.script.CompiledScript;
-import javax.script.ScriptException;
-import javax.script.SimpleBindings;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.URLEncoder;
 import java.util.*;
+import java.util.logging.Logger;
+import java.util.logging.Level;
 import java.util.regex.Pattern;
 
 /**
@@ -23,52 +17,43 @@ import java.util.regex.Pattern;
  * Jul 24, 2009
  * 5:31:17 AM
  */
-public class MsLuvaLuva extends PircBot implements Runnable {
+public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 
-	private float version = 1.3f;
-	private Log log = LogFactory.getLog(MsLuvaLuva.class);
+	private float version = 1.4f;
+	private Logger log = Logger.getLogger("com.popodeus.chat.MsLuvaLuva");
 	private Thread runner;
 	protected Random random;
 
-	protected long timeout = 10 * 1000L;
-	private long last_act = 0;
-	private RhinoScriptEngine engine;
-	private Bindings bindings;
-	private Map<String, CompiledScript> scriptcache;
-	private Map<Event, List<CSC>> eventscripts;
-	private Map<String, Object> scriptvars;
-	private Map<String, Map<String, String>> channel_users;
-	public Object last_result;
-	public String quitmsg = "Bye bye!";
+	//private long last_action_time = 0;
+
+	private ScriptManager scriptmanager;
+	//private Map<String, Set<User>> channel_users;
+
+	private ChatLogger logger;
+
+	private String quitmsg = "Bye bye!";
+	private long startupTime, connectTime;
+	private boolean rejoinmessage_enabled = false;
 
 	protected List<String> greetings;
 	protected boolean silence;
-	private static final String PROP_NICK = "nick";
-	private static final String SCRIPTVAR_NICK = PROP_NICK;
-	private static final String SCRIPTVAR_CHANNEL = "channel";
-	private static final String SCRIPTVAR_IDENT = "ident";
-	private static final String SCRIPTVAR_HOST = "host";
-	private static final String SCRIPTVAR_MESSAGE = "message";
-	private static final String SCRIPTVAR_PARAM = "param";
-	private static final String SCRIPTVAR_BOT = "bot";
-	private static final String SCRIPTVAR_LAST_RESULT = "last_result";
-	private static final String SCRIPTVAR_RESULT = "result";
-	private static final String SCRIPTVAR_RESPONSE = "response";
-	private static final String SCRIPTVAR_RESPONSE_TO = "response_to";
-	private static final String SCRIPTVAR_CANCEL = "cancel";
-	private static final String SCRIPTVAR_NO_TIMEOUT = "no_timeout";
-	private static final String UTF8 = "UTF-8";
-	private boolean showGreeting;
 
 	protected ResourceBundle properties;
-	private static final String PROP_GREETINGS_FILE = "greetings.file";
-	private static final String PROP_JOINMSG = "joinmsg";
-	private static final String PROP_QUITMSG = "quitmsg";
-	private static final String PROP_VARIABLE_CACHE = "variable.cache";
-	private static final String PROP_SERVER = "server";
-	private static final String PROP_PASSWORD = "password";
-	private static final String PROP_CHANNELS = "channels";
-	private static final String PROP_SCRIPT_DIR = "script.dir";
+	public static final String PROP_NICK = "nick";
+	public static final String PROP_ALTNICK = "altnick";
+	public static final String PROP_GREETINGS_FILE = "greetings.file";
+	public static final String PROP_REJOINMSG = "rejoinmsg";
+	public static final String PROP_REJOINMSG_ENABLED = "rejoinmsg.enabled";
+	public static final String PROP_QUITMSG = "quitmsg";
+	public static final String PROP_VARIABLE_CACHE_DIR = "script.variable.dir";
+	public static final String PROP_SERVER = "server";
+	public static final String PROP_PASSWORD = "password";
+	public static final String PROP_CHANNELS = "channels";
+	public static final String PROP_GREET_CHANNELS = "channels.greet";
+	public static final String PROP_SCRIPT_DIR = "script.dir";
+	public static final String PROP_VERSION_STRING = "version.string";
+	public static final String PROP_LOG_DIR = "log.dir";
+	static final String MSG_ON_IGNORE_LIST = "You are on the bot ignore list.";
 
 	enum Event {
 		JOIN,
@@ -80,110 +65,91 @@ public class MsLuvaLuva extends PircBot implements Runnable {
 		LEAVE,
 		TOPIC,
 		QUIT,
+		UNSUPPORTED,
 	}
 
 	public MsLuvaLuva() {
+		startupTime = System.currentTimeMillis();
 		log.info("MsLuvaLuva v" + version + " is starting...");
-		setVersion("Popodeus IRC bot http://popodeus.com/chat/bot/");
-		//InputStream is = getClass().getClassLoader().getResourceAsStream("config");
-		reinit();
-		loadScriptVars();
-		scriptcache = new HashMap<String, CompiledScript>(64);
-		showGreeting = true;
-		scriptvars = new HashMap<String, Object>(32);
 		random = new Random();
-		engine = new RhinoScriptEngine();
-		bindings = new SimpleBindings();
+
+		reinitialize();
+
+		scriptmanager = new ScriptManager(
+				this,
+				new File(properties.getString(PROP_SCRIPT_DIR)),
+				new File(properties.getString(PROP_VARIABLE_CACHE_DIR))
+		);
+
 		runner = new Thread(this);
 		runner.start();
 	}
 
-	public void reinit() {
+	public boolean byebye() {
+		runner.interrupt();
+		return true;
+	}
+
+	public void reinitialize() {
 		try {
+			log.info("MsLuvaLuva reinitialize");
 			properties = ResourceBundle.getBundle("config");
 			setLogin(properties.getString(PROP_NICK));
+			setVersion(properties.getString(PROP_VERSION_STRING));
 			quitmsg = properties.getString(PROP_QUITMSG);
+			rejoinmessage_enabled = Boolean.parseBoolean(properties.getString(PROP_REJOINMSG_ENABLED));
+			if (logger != null) logger.closeAll();
+			logger = new ChatLogger(new File(properties.getString(PROP_LOG_DIR)));
 		} catch (Error ex) {
-			log.fatal(ex, ex);
+			log.log(Level.SEVERE, ex.getMessage(), ex);
 		} catch (Exception ex) {
-			log.fatal(ex, ex);
+			log.log(Level.SEVERE, ex.getMessage(), ex);
 		}
 	}
 
-	private void loadScriptVars() {
-		String x = properties.getString(PROP_VARIABLE_CACHE);
-		try {
-			File f = new File(x);
-			if (f.exists()) {
-				ObjectInputStream oos = new ObjectInputStream(new FileInputStream(x));
-				scriptvars = (Map<String, Object>) oos.readObject();
-				oos.close();
-			}
-		} catch (Exception ex) {
-			log.error("Failed to load variable cache from " + x + ". ", ex);
-		}
-	}
-
-	private void saveScriptVars() {
-		String x = properties.getString(PROP_VARIABLE_CACHE);
-		try {
-			if (x != null) {
-				ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(x));
-				oos.writeObject(scriptvars);
-				oos.close();
-			}
-		} catch (Exception ex) {
-			log.error("Failed to save variable cache into " + x + ". ", ex);
-		}
-	}
-
-
-	class CSC {
-		String name;
-		CompiledScript csc;
-
-		CSC(final String name, final CompiledScript csc) {
-			this.name = name;
-			this.csc = csc;
-		}
-	}
 
 	@Override
 	public void run() {
-		compileEventScripts();
-		//setVerbose(true);
-		if (do_connect()) {
-			while (true) {
+		boolean keeprunning = true;
+		if (keeprunning && do_connect()) {
+			while (keeprunning) {
 				try {
+					// Check interruption status every 5 seconds
 					Thread.sleep(5000);
 				} catch (InterruptedException e) {
+					keeprunning = false;
 					break;
 				}
 			}
 			log.info("MsLuvaLuva is disconnecting...");
+			logger.closeAll();
 			quitServer(quitmsg);
-			disconnect();
 		}
-
-		saveScriptVars();
+		scriptmanager.saveScriptVars(new File(properties.getString(PROP_VARIABLE_CACHE_DIR)));
 		System.exit(0);
-	}
-
-	public void byebye() {
-		runner.interrupt();
 	}
 
 	@Override
 	protected void onDisconnect() {
 		log.info("Was disconnected...");
+		logger.logAction(null, "Disconnected from server");
 		int counter = 500;
 		while (!isConnected()) {
 			log.info(new Date() + " attempting reconnect");
+			logger.logAction(null, "Attempting to reconnect");
 			if (do_connect()) {
+				if (rejoinmessage_enabled) {
+					String rejoinmsg = properties.getString(PROP_REJOINMSG);
+					if (rejoinmsg != null && rejoinmsg.length() > 0) {
+						for (String channel : getChannels()) {
+							sendMessage(channel, rejoinmsg);
+						}
+					}
+				}
 				return;
 			}
 			try {
-				Thread.sleep(10000);
+				Thread.sleep(10000+random.nextInt(10)*1000);
 			} catch (InterruptedException e) {
 			}
 			if (--counter == 0) {
@@ -193,9 +159,12 @@ public class MsLuvaLuva extends PircBot implements Runnable {
 	}
 
 	protected boolean do_connect() {
+		String basenick = properties.getString(PROP_NICK);
+		String altnick = properties.getString(PROP_ALTNICK);
+		if (altnick == null) altnick = basenick + "_";
 		try {
-			channel_users = new HashMap<String, Map<String, String>>();
-			setName(properties.getString(PROP_NICK));
+			//channel_users = new HashMap<String, Set<User>>();
+			setName(basenick);
 			if (!isConnected()) {
 				connect(properties.getString(PROP_SERVER));
 			} else {
@@ -203,24 +172,28 @@ public class MsLuvaLuva extends PircBot implements Runnable {
 			}
 			identify(properties.getString(PROP_PASSWORD));
 		} catch (NickAlreadyInUseException naius) {
-			log.info("Nick MsLuvaLuva was already in use...");
-			setName(properties.getString(PROP_NICK) + "_");
+			log.info("Nick " + basenick + " was already in use...");
+			setName(altnick);
 			try {
 				if (!isConnected()) {
 					connect(properties.getString(PROP_SERVER));
 				} else {
 					reconnect();
 				}
-				//identify(PASSWD);
-				sendRawLine("NICKSERV GHOST " + properties.getString(PROP_NICK) + " " + properties.getString(PROP_PASSWORD));
-				setName(properties.getString(PROP_NICK));
+				//identify(PASSWD);-
+				sendRawLine("NICKSERV GHOST " + basenick + " " + properties.getString(PROP_PASSWORD));
+				setName(basenick);
 			} catch (Exception e) {
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
 			return false;
 		}
+		connectTime = System.currentTimeMillis();
+		log.info("Setting mode +b");
+		setMode(getNick(), "+b");
 		for (String channel : properties.getString(PROP_CHANNELS).split(",")) {
+			//channel_users.put(channel, new TreeSet<User>());
 			joinChannel(channel);
 		}
 		return true;
@@ -228,48 +201,40 @@ public class MsLuvaLuva extends PircBot implements Runnable {
 
 	@Override
 	protected synchronized void onUserList(final String channel, final User[] users) {
-		Map<String, String> u = channel_users.get(channel);
-		if (u == null) {
-			u = new HashMap<String, String>(users.length);
-		}
-		for (User user : users) {
-			u.put(user.getNick(), user.getPrefix());
-		}
+		/*
+		Set<User> u = new TreeSet<User>();
+		u.addAll(Arrays.asList(users));
 		channel_users.put(channel, u);
+		*/
 	}
 
 	@Override
 	protected void onUserMode(final String targetNick, final String sourceNick, final String sourceLogin, final String sourceHostname, final String mode) {
 		log.info(targetNick + " => " + mode + " (" + sourceNick + ")");
-		/*
-		for (User u : getUsers(channel)) {
-
-		}
-		*/
 	}
 
 	@Override
 	protected void onJoin(final String channel, final String sender, final String login, final String hostname) {
-		if (!getNick().equals(sender)) {
-			//if (isVoice(getNick(), channel)) {
-			if (greetings == null) {
-				reloadGreetings();
-			}
-			if (greetings != null) {
-				String line = greetings.get(random.nextInt(greetings.size()));
-				sendMessage(channel, line.replace("$nick", sender));
-			}
-			//}
-			runOnEventScript(Event.JOIN, sender, login, hostname, null, channel);
+		if (getNick().equals(sender)) {
+			logger.joinChannel(channel);
 		} else {
-			if (showGreeting) {
-				sendMessage(channel, properties.getString(PROP_JOINMSG));
-			}
+			logger.logAction(channel, sender + " [" + login + "@" + hostname + "] has joined " + channel);
+			scriptmanager.runOnEventScript(this, Event.JOIN, sender, login, hostname, null, channel);
 		}
 	}
 
+	public String getGreeting() {
+		if (greetings == null) {
+			reloadGreetings();
+		}
+		if (greetings != null) {
+			return greetings.get(random.nextInt(greetings.size()));
+		}
+		return "Hi $nick!";
+	}
+
 	public void reloadGreetings() {
-		greetings = new ArrayList<String>(40);
+		greetings = new ArrayList<String>(100);
 		try {
 			BufferedReader br = new BufferedReader(new FileReader(properties.getString(PROP_GREETINGS_FILE)));
 			String s;
@@ -286,118 +251,83 @@ public class MsLuvaLuva extends PircBot implements Runnable {
 
 	@Override
 	protected void onNickChange(final String oldNick, final String login, final String hostname, final String newNick) {
-		log.info(oldNick + " changed into " + newNick);
+		log.info(oldNick + " is now known as " + newNick);
+		logger.logAction(null, oldNick + " is now known as " + newNick);
+		/*
+		User olduser = new User(User.Prefix.NONE, oldNick);
 		for (String channel : channel_users.keySet()) {
-			Map<String, String> u = channel_users.get(channel);
-			if (u.containsKey(oldNick)) {
+			Set<User> u = channel_users.get(channel);
+			if (u.contains(olduser)) {
 				// Save the new nick and prefix
-				u.put(newNick, u.get(oldNick));
-				u.remove(oldNick);
+				u.remove(olduser);
+				u.add(new User(olduser.getPrefix(), newNick));
 			}
 		}
-		runOnEventScript(Event.NICKCHANGE, newNick, login, hostname, oldNick, null);
+		*/
+		scriptmanager.runOnEventScript(this, Event.NICKCHANGE, newNick, login, hostname, oldNick, null);
 	}
 
 	@Override
 	protected void onMode(final String channel, final String sourceNick, final String sourceLogin, final String sourceHostname, final String mode) {
-		log.info(sourceNick + " ==> " + mode);
-	}
-
-	@Override
-	protected void onOp(final String channel, final String sourceNick, final String sourceLogin, final String sourceHostname, final String recipient) {
-		log.info(recipient + " received op");
-		Map<String, String> u = channel_users.get(channel);
-		if (u != null && u.containsKey(recipient)) {
-			// Save the new nick and prefix
-			u.put(recipient, "@");
+		log.info(sourceNick + "!" + sourceLogin + "@" + sourceHostname + " ==> " + channel + " " + mode);
+		logger.logAction(channel, "mode/"+channel + " [" + mode + " " + sourceNick + "]");
+		scriptmanager.runOnEventScript(this, Event.RIGHTS, mode, sourceLogin, sourceHostname, mode, channel);
+		/*
+		if (mode.startsWith("+v")) {
+			String[] r = mode.split(" ");
+			for (int i = 1; i < r.length; i++) {
+				channel_users.get(channel).put(r[i].toLowerCase(), "+");
+			}
 		}
-		runOnEventScript(Event.RIGHTS, recipient, sourceLogin, sourceHostname, "+@", channel);
-	}
-
-	@Override
-	protected void onDeop(final String channel, final String sourceNick, final String sourceLogin, final String sourceHostname, final String recipient) {
-		log.info(recipient + " lost op");
-		Map<String, String> u = channel_users.get(channel);
-		if (u != null && u.containsKey(recipient)) {
-			u.put(recipient, "");
+		if (mode.startsWith("+o")) {
+			String[] r = mode.split(" ");
+			for (int i = 1; i < r.length; i++) {
+				channel_users.get(channel).put(r[i].toLowerCase(), "@");
+			}
 		}
-		runOnEventScript(Event.RIGHTS, recipient, sourceLogin, sourceHostname, "-@", channel);
-	}
-
-	@Override
-	protected void onVoice(final String channel, final String sourceNick, final String sourceLogin, final String sourceHostname, final String recipient) {
-		log.info(recipient + " received voice");
-		Map<String, String> u = channel_users.get(channel);
-		if (u != null && u.containsKey(recipient)) {
-			// Save the new nick and prefix
-			u.put(recipient, "+");
+		if (mode.startsWith("+q")) {
+			String[] r = mode.split(" ");
+			for (int i = 1; i < r.length; i++) {
+				channel_users.get(channel).put(r[i].toLowerCase(), "~");
+			}
 		}
-		runOnEventScript(Event.RIGHTS, recipient, sourceLogin, sourceHostname, "++", channel);
-	}
-
-	@Override
-	protected void onDeVoice(final String channel, final String sourceNick, final String sourceLogin, final String sourceHostname, final String recipient) {
-		log.info(recipient + " lost voice");
-		Map<String, String> u = channel_users.get(channel);
-		if (u != null && u.containsKey(recipient)) {
-			u.put(recipient, "");
+		if (mode.startsWith("+h")) {
+			String[] r = mode.split(" ");
+			for (int i = 1; i < r.length; i++) {
+				channel_users.get(channel).put(r[i].toLowerCase(), "%");
+			}
 		}
-		runOnEventScript(Event.RIGHTS, recipient, sourceLogin, sourceHostname, "-+", channel);
-	}
-
-	@Override
-	protected void onDeOwner(final String channel, final String sourceNick, final String sourceLogin, final String sourceHostname, final String recipient) {
-		log.info(recipient + " lost owner");
-		Map<String, String> u = channel_users.get(channel);
-		if (u != null && u.containsKey(recipient)) {
-			u.put(recipient, "");
+		if (mode.startsWith("+a")) {
+			// Protect
+			String[] r = mode.split(" ");
+			for (int i = 1; i < r.length; i++) {
+				channel_users.get(channel).put(r[i].toLowerCase(), "%");
+			}
 		}
-		runOnEventScript(Event.RIGHTS, recipient, sourceLogin, sourceHostname, "-~", channel);
-	}
-
-	@Override
-	protected void onOwner(final String channel, final String sourceNick, final String sourceLogin, final String sourceHostname, final String recipient) {
-		log.info(recipient + " received owner");
-		Map<String, String> u = channel_users.get(channel);
-		if (u != null && u.containsKey(recipient)) {
-			u.put(recipient, "~");
-		}
-		runOnEventScript(Event.RIGHTS, recipient, sourceLogin, sourceHostname, "+~", channel);
-	}
-
-	@Override
-	protected void onDeHalfOp(final String channel, final String sourceNick, final String sourceLogin, final String sourceHostname, final String recipient) {
-		log.info(recipient + " lost halfop");
-		Map<String, String> u = channel_users.get(channel);
-		if (u != null && u.containsKey(recipient)) {
-			u.put(recipient, "");
-		}
-		runOnEventScript(Event.RIGHTS, recipient, sourceLogin, sourceHostname, "-%", channel);
-	}
-
-	@Override
-	protected void onHalfOp(final String channel, final String sourceNick, final String sourceLogin, final String sourceHostname, final String recipient) {
-		log.info(recipient + " received halfop");
-		Map<String, String> u = channel_users.get(channel);
-		if (u != null && u.containsKey(recipient)) {
-			u.put(recipient, "%");
-		}
-		runOnEventScript(Event.RIGHTS, recipient, sourceLogin, sourceHostname, "+%", channel);
+		*/
 	}
 
 	@Override
 	protected void onInvite(final String targetNick, final String sourceNick, final String sourceLogin, final String sourceHostname, final String channel) {
-		joinChannel(channel);
+		String[] channels = properties.getString(PROP_CHANNELS).split(",");
+		Arrays.sort(channels);
+		if (Arrays.binarySearch(channels, channel) >= 0) {
+			joinChannel(channel);
+		} else {
+			sendNotice(sourceNick, "I'm not supposed to be on that channel.");
+		}
 	}
 
 	@Override
 	protected void onTopic(final String channel, final String topic, final String setBy, final long date, final boolean changed) {
-		runOnEventScript(Event.TOPIC, setBy, "" + date, null, topic, channel);
+		logger.logAction(channel, setBy + " sets topic to: " + topic);
+		scriptmanager.runOnEventScript(this, Event.TOPIC, setBy, "" + date, null, topic, channel);
 	}
 
 
 	@Override
 	protected void onKick(final String channel, final String kickerNick, final String kickerLogin, final String kickerHostname, final String recipientNick, final String reason) {
+		logger.logAction(channel, recipientNick + " was kicked from " + channel + " by " + kickerNick + " ["+reason+"]");
 		log.info("Kicked: " + recipientNick);
 		if (recipientNick.equals(getNick())) {
 			final MsLuvaLuva _this = this;
@@ -406,14 +336,15 @@ public class MsLuvaLuva extends PircBot implements Runnable {
 					_this.joinChannel(channel);
 				}
 			};
-			long time = 15000;
-			if (reason.matches("\\d+")) {
+			final int KICKOUT_TIME = 15000;
+			long time = KICKOUT_TIME;
+			if (reason.matches(".*(\\d+).*")) {
 				try {
-					time = Integer.parseInt(Pattern.compile(".*(\\d+).*").matcher(reason).group(1));
+					time = Integer.parseInt(Pattern.compile("[^0-9]*(\\d+)[^0-9]*").matcher(reason).group(1));
 					if (time > 0 && time <= 300) {
 						time *= 1000;
 					} else {
-						time = 15000;
+						time = KICKOUT_TIME;
 					}
 				} catch (Exception e) {
 				}
@@ -422,134 +353,180 @@ public class MsLuvaLuva extends PircBot implements Runnable {
 			Timer timer = new Timer();
 			timer.schedule(tt, time);
 		} else {
-			Map<String, String> u = channel_users.get(channel);
+			/*
+			Set<User> u = channel_users.get(channel);
 			if (u != null) {
-				u.remove(recipientNick);
+				u.remove(new User(User.Prefix.NONE, recipientNick));
 			}
-			runOnEventScript(Event.KICK, recipientNick, kickerLogin, kickerHostname, null, channel);
+			*/
+			scriptmanager.runOnEventScript(this, Event.KICK, recipientNick, kickerLogin, kickerHostname, null, channel);
 		}
 	}
 
 	@Override
 	protected void onPrivateMessage(final String sender, final String login, final String hostname, final String message) {
 		if (message.startsWith("!") && message.trim().length() > 1) {
-			long delta = System.currentTimeMillis() - last_act;
-			if (delta >= timeout) {
-				actOnTrigger(sender, login, hostname, message, null);
-				// if it takes long to react...?
+			if (scriptmanager.getAPI(null).isIgnored(sender, login, hostname)) {
+				sendNotice(sender, MSG_ON_IGNORE_LIST);
+				return;
+			}
+			String[] tmp = message.split(" ", 2);
+			String cmd = tmp[0].substring(1);
+
+			actOnTrigger(sender, login, hostname, message, null);
+			/*
+			TriggerScript scr = scriptmanager.getTriggerScript(
+					properties.getString(PROP_SCRIPT_DIR),
+					cmd);
+			// TODO different timeout queues for private messages (and per nick) and public messages?
+			if (!scr.hasTimeoutPassed()) {
+				String timeoutmsg = "Too fast - Timeout is " + (timeout / 1000) + "s. Try again later.";
+				sendNotice(sender, timeoutmsg);
+				// if it takes too long to react...?
 				//last_act = System.currentTimeMillis();
 			} else {
-				sendNotice(sender, "Too fast - Timeout is " + (timeout / 1000) + "s. Try again later.");
+				// TODO measure how long it takes to run a certain script
+				actOnTrigger(sender, login, hostname, message, null);
 			}
+			*/
 		} else {
-			runOnEventScript(Event.MESSAGE, sender, login, hostname, message, sender);
+			scriptmanager.runOnEventScript(this, Event.MESSAGE, sender, login, hostname, message, sender);
 		}
 	}
 
 	@Override
 	protected void onMessage(final String channel, final String sender, final String login, final String hostname, final String message) {
+		logger.log(channel, sender, message, true);
 		if (message.startsWith("!") && message.trim().length() > 1) {
-			boolean special = sender.startsWith("@") || sender.startsWith("~") ||
+			boolean special = false;
+			/* sender.startsWith("@") || sender.startsWith("~") ||
 					"@".equals(getPrefix(channel, sender)) ||
-					"~".equals(getPrefix(channel, sender));
+					"~".equals(getPrefix(channel, sender)); */
 			if (special) {
 
 			} else {
-				if (!isVoice(getNick(), channel)) {
-					sendNotice(sender, "I've lost my voice, so I'm not able to speak!");
+				if (sender.toLowerCase().equals(sender)) {
+					sendNotice(sender, "Sorry, I don't listen to people with improper (lowercase) nicknames.");
 					return;
 				}
-				if (sender.toLowerCase().equals(sender)) {
-					sendNotice(sender, "Sorry, I don't listen to people with improper nicknames.");
+				if (!hasVoice(channel, getNick())) {
+					sendNotice(sender, "I've lost my voice, so I'm not able to speak!");
 					return;
 				}
 			}
 			/*
-			if (message.startsWith("!silence ")) {
-				if (isHalfOp(sender, channel) || isOp(sender, channel) || isOwner(sender, channel)) {
-					silence = message.endsWith(" on");
-					sendMessage(channel, silence?
-							"Silencing is ON. Bot commands can be reactivated by an op with !silence off":
-							"Silencing is OFF");
-					return;
-				} else {
-					sendNotice(sender, "Not enough privileges. Need to be voice or op");
-				}
-			}
-
-			if (silence) {
-				if (isNormal(sender, channel)) {
-					sendNotice(sender, "Bot has been silenced by an op. All commands are ignored.");
-					return;
-				}
-			}
-			*/
-			long delta = System.currentTimeMillis() - last_act;
+			String[] tmp = message.split(" ", 2);
+			String cmd = tmp[0].substring(1);
+			long last = scriptmanager.getAPI().getLastRun(cmd);
+			long delta = System.currentTimeMillis() - last;
+			long timeout = scriptmanager.getAPI().getTimeout(cmd);
 			if (special || delta >= timeout) {
 				actOnTrigger(sender, login, hostname, message, channel);
 			} else {
-				//sendNotice(sender, "Too fast - Try again later.");
 				sendNotice(sender, "Too fast - Timeout is " + (timeout / 1000) + "s. Try again later.");
 			}
+			*/
+			actOnTrigger(sender, login, hostname, message, channel);
 		} else {
-			runOnEventScript(Event.MESSAGE, sender, login, hostname, message, channel);
+			scriptmanager.runOnEventScript(this, Event.MESSAGE, sender, login, hostname, message, channel);
 		}
 	}
 
 	@Override
 	protected void onAction(final String sender, final String login, final String hostname, final String target, final String action) {
+		logger.logAction(target, "* " + sender + " " + action, true);
 		super.onAction(sender, login, hostname, target, action);
-		runOnEventScript(Event.ACTION, sender, login, hostname, action, target);
+		scriptmanager.runOnEventScript(this, Event.ACTION, sender, login, hostname, action, target);
 	}
 
 	@Override
 	protected void onQuit(final String sourceNick, final String sourceLogin, final String sourceHostname, final String reason) {
+		logger.logAction(null, sourceNick + " [" + sourceLogin + "@" + sourceHostname + "] has quit [" + reason + "]");
 		super.onQuit(sourceNick, sourceLogin, sourceHostname, reason);
-		runOnEventScript(Event.QUIT, sourceNick, sourceLogin, sourceHostname, reason, null);
+		scriptmanager.runOnEventScript(this, Event.QUIT, sourceNick, sourceLogin, sourceHostname, reason, null);
 	}
 
-	public long getTimeout() {
-		return timeout;
+	@Override
+	protected void onUnknown(final String line) {
+		log.info(line);
+		super.onUnknown(line);
+		scriptmanager.runOnEventScript(this, Event.UNSUPPORTED, null, null, null, line, null);
 	}
 
-	public void setTimeout(final long timeout) {
-		this.timeout = timeout;
+	public long getStartupTime() {
+		return startupTime;
 	}
 
-	public boolean isNormal(final String sender, final String channel) {
-		return channel_users.containsKey(channel) &&
-				channel_users.get(channel).containsKey(sender) &&
-				channel_users.get(channel).get(sender).matches("^[a-ZA-Z]+.+$");
+	public long getConnectTime() {
+		return connectTime;
 	}
 
-	public boolean isVoice(final String sender, final String channel) {
-		return channel_users.containsKey(channel) &&
-				channel_users.get(channel).containsKey(sender) &&
-				channel_users.get(channel).get(sender).startsWith("+");
+	public boolean isNormal(final String channel, final String nick) {
+		for (User user : getUsers(channel)) {
+			if (user.equals(nick)) {
+				return user.getPrefix().isEmpty();
+			}
+		}
+		return false;
 	}
 
-	public boolean isHalfOp(final String sender, final String channel) {
-		return channel_users.containsKey(channel) &&
-				channel_users.get(channel).containsKey(sender) &&
-				channel_users.get(channel).get(sender).startsWith("%");
+	public boolean hasVoice(final String channel, final String nick) {
+		User[] users = getUsers(channel);
+		for (User user : users) {
+			if (user.equals(nick)) {
+				return user.isVoice();
+			}
+		}
+		return false;
 	}
 
-	public boolean isOp(final String sender, final String channel) {
-		return channel_users.containsKey(channel) &&
-				channel_users.get(channel).containsKey(sender) &&
-				channel_users.get(channel).get(sender).startsWith("@");
+	public boolean isHalfOp(final String channel, final String nick) {
+		for (User user : getUsers(channel)) {
+			if (user.equals(nick)) {
+				return user.isHalfOp();
+			}
+		}
+		return false;
 	}
 
-	public boolean isOwner(final String sender, final String channel) {
-		return channel_users.containsKey(channel) &&
-				channel_users.get(channel).containsKey(sender) &&
-				channel_users.get(channel).get(sender).startsWith("~");
+	public boolean isOp(final String channel, final String nick) {
+		for (User user : getUsers(channel)) {
+			if (user.equals(nick)) {
+				return user.isOp();
+			}
+		}
+		return false;
+	}
+
+	public boolean isAdmin(final String channel, final String nick) {
+		for (User user : getUsers(channel)) {
+			if (user.equals(nick)) {
+				return user.isAdmin();
+			}
+		}
+		return false;
+	}
+
+	public boolean isOwner(final String channel, final String nick) {
+		for (User user : getUsers(channel)) {
+			if (user.equals(nick)) {
+				return user.isOwner();
+			}
+		}
+		return false;
 	}
 
 	public String getPrefix(final String channel, final String nick) {
-		return (channel_users.containsKey(channel) &&
-				channel_users.get(channel).containsKey(nick) ?
-				channel_users.get(channel).get(nick) : null);
+		for (User user : getUsers(channel)) {
+			if (user.equals(nick)) {
+				StringBuilder sb = new StringBuilder(4);
+				for (User.Prefix prefix : user.getPrefix()) {
+					sb.append(prefix.toString());
+				}
+				return sb.toString();
+			}
+		}
+		return "";
 	}
 
 	private boolean actOnTrigger(final String sender, final String login, final String hostname, final String message, final String _channel) {
@@ -566,180 +543,15 @@ public class MsLuvaLuva extends PircBot implements Runnable {
 			param = tmp[1].trim();
 		}
 
-		/*
-		if ("who".equals(cmd) && param.length() > 0) {
-			cmdWho(channel, param, "q");
-			return true;
-		} else if ("asl".equals(cmd) && param.length() > 0) {
-			cmdWho(channel, param, "asl");
-			return true;
-		} else if ("assets".equals(cmd) && param.length() > 0) {
-			cmdWho(channel, param, "a");
-			return true;
-		}
-		*/
 		boolean retval = false;
 		if (cmd.matches("[a-z_]+")) {
-			retval = runTriggerScript(sender, login, hostname, message, channel, cmd, param);
-		}
-		if (retval) {
-			last_act = System.currentTimeMillis();
+			retval = scriptmanager.runTriggerScript(this,
+					properties.getString(PROP_SCRIPT_DIR), 
+					sender, login, hostname, message, channel, cmd, param);
 		}
 		return retval;
 	}
 
-	public void clearCacheForScript(final String cmd) {
-		log.info("clearCacheForScript: " + cmd);
-		scriptcache.remove(cmd);
-	}
-
-	protected boolean runTriggerScript(final String sender, final String login, final String hostname, final String message, final String channel, final String cmd, final String param) {
-		CompiledScript csc = null;
-		if (scriptcache.containsKey(cmd)) {
-			log.trace("Script has compiled cache for " + cmd);
-			csc = scriptcache.get(cmd);
-		} else {
-			File script = new File(properties.getString(PROP_SCRIPT_DIR), cmd + ".js");
-			log.debug("Locating script file " + script);
-			if (script.exists()) {
-				FileReader reader = null;
-				try {
-					reader = new FileReader(script);
-					log.info("Compiling " + script);
-					csc = engine.compile(reader);
-					scriptcache.put(cmd, csc);
-				} catch (Exception e) {
-					log.error(e, e);
-				} catch (Error e) {
-					log.error(e, e);
-				} finally {
-					if (reader != null) {
-						try {
-							reader.close();
-						} catch (IOException e) { /* no op */ }
-					}
-				}
-			} else {
-				log.debug(script + " not found");
-			}
-		}
-
-		if (csc != null) {
-			//bindings.clear();
-			bindings.put(SCRIPTVAR_NICK, sender);
-			bindings.put(SCRIPTVAR_CHANNEL, channel);
-			bindings.put(SCRIPTVAR_IDENT, login);
-			bindings.put(SCRIPTVAR_HOST, hostname);
-			bindings.put(SCRIPTVAR_MESSAGE, message);
-			bindings.put(SCRIPTVAR_PARAM, param);
-			bindings.put(SCRIPTVAR_BOT, this);
-			bindings.put(SCRIPTVAR_LAST_RESULT, last_result);
-			bindings.put(SCRIPTVAR_RESULT, new Object());
-
-			bindings.remove(SCRIPTVAR_CANCEL);
-			bindings.remove(SCRIPTVAR_RESPONSE);
-			bindings.remove(SCRIPTVAR_RESPONSE_TO);
-			bindings.remove(SCRIPTVAR_NO_TIMEOUT);
-			try {
-				log.trace("Evaluating " + cmd);
-				csc.eval(bindings);
-			} catch (ScriptException e) {
-				log.error(cmd + ": " + e);
-			}
-			last_result = bindings.get(SCRIPTVAR_RESULT);
-
-			Object response = bindings.get(SCRIPTVAR_RESPONSE);
-			Object response_to = bindings.get(SCRIPTVAR_RESPONSE_TO);
-			if (null != response && null != response_to) {
-				sendMessage(response_to.toString(), response.toString());
-			}
-			if (bindings.get(SCRIPTVAR_NO_TIMEOUT) != null) {
-				return false;
-			}
-			return true;
-		} else {
-			sendNotice(sender, "Unknown command: " + cmd);
-			log.info(sender + "@" + hostname + " tried to invoke unknown command: " + cmd);
-		}
-		return false;
-	}
-
-	public void compileEventScripts() {
-		log.info("Compiling event scripts...");
-		eventscripts = new HashMap<Event, List<CSC>>(Event.values().length * 2);
-		for (Event evt : Event.values()) {
-			File dir = new File(properties.getString(PROP_SCRIPT_DIR), evt.name());
-			if (dir.exists()) {
-				File[] scripts = dir.listFiles(new FilenameFilter() {
-					public boolean accept(final File dir, final String name) {
-						return name.endsWith(".js");
-					}
-				});
-				Arrays.sort(scripts);
-				List<CSC> cscs = new ArrayList<CSC>(scripts.length);
-				for (File script : scripts) {
-					FileReader reader = null;
-					try {
-						reader = new FileReader(script);
-						log.debug("Compiling " + script);
-						cscs.add(new CSC(script.getName(), engine.compile(reader)));
-					} catch (Exception e) {
-						log.error(script.getName() + ": " + e);
-					} finally {
-						try {
-							if (reader != null) {
-								reader.close();
-							}
-						} catch (IOException e) {
-						}
-					}
-				}
-				log.info(evt + ": " + cscs.size() + " scripts");
-				eventscripts.put(evt, cscs);
-			}
-		}
-	}
-
-	private void runOnEventScript(final Event event, final String sender, final String login, final String hostname, final String message, final String channel) {
-		log.debug(sender + ", " + event);
-		List<CSC> scripts = eventscripts.get(event);
-		if (scripts != null) {
-			for (CSC csc : scripts) {
-				//bindings.clear();
-				bindings.put(SCRIPTVAR_NICK, sender);
-				bindings.put(SCRIPTVAR_CHANNEL, channel);
-				bindings.put(SCRIPTVAR_IDENT, login);
-				bindings.put(SCRIPTVAR_HOST, hostname);
-				bindings.put(SCRIPTVAR_MESSAGE, message);
-				bindings.put(SCRIPTVAR_BOT, this);
-				bindings.put(SCRIPTVAR_LAST_RESULT, last_result);
-				bindings.put(SCRIPTVAR_RESULT, new Object());
-
-				bindings.remove(SCRIPTVAR_CANCEL);
-				bindings.remove(SCRIPTVAR_RESPONSE);
-				bindings.remove(SCRIPTVAR_RESPONSE_TO);
-				try {
-					log.trace("running: " + csc.name);
-					csc.csc.eval(bindings);
-				} catch (ScriptException e) {
-					log.error(csc.name + ": " + e);
-				}
-				last_result = bindings.get(SCRIPTVAR_RESULT);
-
-				Object response = bindings.get(SCRIPTVAR_RESPONSE);
-				Object response_to = bindings.get(SCRIPTVAR_RESPONSE_TO);
-				if (null != response && null != response_to) {
-					sendMessage(response_to.toString(), response.toString());
-				}
-				if (bindings.get(SCRIPTVAR_CANCEL) != null) {
-					log.debug(csc.name + ": early cancel. No processing of other scripts");
-					break;
-				}
-			}
-		} else {
-			log.debug("No event scripts for " + event);
-		}
-	}
 
 	public String fetchUrl(String _url) {
 		String line = null;
@@ -752,41 +564,12 @@ public class MsLuvaLuva extends PircBot implements Runnable {
 			line = br.readLine();
 			hurl.disconnect();
 		} catch (IOException e) {
-			log.warn(_url + " => " + e.toString());
+			log.warning(_url + " => " + e.toString());
 		}
 		return line;
 	}
 
-	public Log getLog() {
-		return log;
-	}
-
-	public String encode(final String param) {
-		try {
-			return URLEncoder.encode(param, UTF8);
-		} catch (UnsupportedEncodingException e) {
-			return param;
-		}
-	}
-
-	public void setValue(String key, Object value) {
-		log.trace("setValue: " + key + " => " + value + " (" + value.getClass().getName() + ")");
-		scriptvars.put(key, value);
-	}
-
-	public Object getValue(String key) {
-		return scriptvars.get(key);
-	}
-
 	public static void main(String[] args) {
 		new MsLuvaLuva();
-		/*
-		try {
-			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-			br.readLine();
-		} catch (IOException e) {
-		}
-		luva.byebye();
-		*/
 	}
 }

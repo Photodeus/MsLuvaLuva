@@ -1,5 +1,6 @@
 // @description Totally useless... Why would anyone use this?
 var val = Math.round((Math.random()*28+6)*10)/10;
+if (param.toLowerCase() == 'alanasanikonis') val = 33.333;
 var meats = [
 	"club of meat",
 	"meat stick",
@@ -34,10 +35,12 @@ var styles = [
 	"I saw a naked photo of $nick on the internet. I believe the $item is at least $sizecm.",
 	"I saw a naked photo of $nick in my mom's secret photo album, the $sizecm $item was hard to miss",
 	"I'd be dying if I'd be lying about $nick's $item. It's been measured to be exactly $sizecm.",
+	"I'm sorry to say this, but $nick's $item is exactly $sizecm.",
 	"Honestly, $nick has got a $sizecm $item!!",
 	"Seriously, $nick is hiding a $sizecm $item in there.",
 	"There's no need to lie about it. $nick has got a $sizecm $item!",
 	"Fact: $nick is equipped with a $sizecm $item.",
+	"Drumroll please.... I hereby announce that $nick is infact a proud owner of a $sizecm $item!",
 ];
 
 if (Math.random() < 0.1) {

@@ -1,2 +1,2 @@
 // @private
-bot.sendNotice(nick, "The command has been changed, it's called !gross");
+API.notice(nick, "The command has been changed, it's called !gross");

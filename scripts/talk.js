@@ -1,7 +1,8 @@
 // @private
-var tmp = param.split(' ', 2);
-if (tmp[0].match(/\#[a-zA-Z]+/)) {
-	bot.sendMessage(tmp[0], tmp[1]);
-} else {
-	bot.sendNotice(nick, "Usage: #channel message");
+if (API.isOwner(channel, nick) || API.isAdmin(channel, nick) || API.isOwner(channel, nick)) {
+	var tmp = param.match(/(\#[a-zA-Z]+)\s(.+)/);
+	if (tmp) {
+		API.say(tmp[1], tmp[2]);
+	}
 }
+no_timeout = true;

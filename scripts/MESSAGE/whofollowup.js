@@ -2,17 +2,20 @@
 if (message.match(/^\d+$/)) {
 	// starts with a number
 	var lnick = "" + nick.toLowerCase();
-	var lastq = bot.getValue("who."+lnick+"!"+ident+"@host");
-	//bot.getLog().info(nick + " lastq => " + lastq);
-	if (lastq) {
-		var p = bot.encode(message + " " + lastq);
-		var line = bot.fetchUrl("http://popodeus.com/namesearch/find.jsp?q="+p);
-		//bot.getLog().info(line);
+	var lastq = API.getValue("who."+lnick+"!"+ident+"@host");
+	var time = API.getValue("who.time."+lnick+"!"+ident+"@host");
+	//API.info(nick + " lastq => " + lastq);
+	if (lastq && time && (new Date().getTime()/1000-time < 30)) {
+		var p = API.encode(message + " " + lastq);
+		var line = API.getPageAsText("http://popodeus.com/namesearch/find.jsp?q="+p);
+		//API.info(line);
 		if (line != null) {
-			bot.sendMessage(channel, line);
+			API.say(channel, line);
 			cancel = true;
+			API.setValue("who."+lnick+"!"+ident+"@host", null);
 		}
 	}
 }
 // No more who queries after this
-bot.removeValue("who."+lnick+"!"+ident+"@host");
+//API.removeValue("who."+lnick+"!"+ident+"@host");
+//API.setValue("who."+lnick+"!"+ident+"@host", null);

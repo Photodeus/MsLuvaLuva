@@ -10,17 +10,17 @@ var responses = [
 	"Who turned on the porno channel, can we switch back to discovery channel where they make this stuff sound interesting?",
 	"You know what guys? Sometimes I think you all are a bit too gross.",
 	"You know what guys? Sometimes I think you all are a bit too explicit!",
-	"Can't we use words like 'Snuggle' instead of saying ****?",
+	"Wow they never taught us to say that in school. You guys really do know how to say the weirdest shit.",
 	//	"- Tickle your ass with a feather? Huh? - I asked, \"Particulary nasty weather?\"",
 ];
 
 var lnick = nick.toLowerCase();
-bot.getLog().info("gross by " + nick);
-var last = bot.getValue("gross." + lnick)
+API.info("gross by " + nick);
+var last = API.getValue("gross." + lnick)
 if (last && new Date().getTime() - last < 120000) {
-	bot.sendNotice(nick, "Once is enough, aight?");
+	API.notice(nick, "Once is enough, aight?");
 } else {
 	response_to = "#Popmundo";
 	response = responses[Math.floor(Math.random() * responses.length)];
 }
-bot.setValue("gross." + lnick, new Date().getTime())
+API.setValue("gross." + lnick, new Date().getTime())

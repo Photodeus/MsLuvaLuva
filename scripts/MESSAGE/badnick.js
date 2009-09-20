@@ -9,10 +9,11 @@ function Warning(nick, count) {
 var BOLD = String.fromCharCode(2);
 var lnick = "" + nick.toLowerCase();
 
-bot.setValue("seen." + lnick + ".time", Math.round(new Date().getTime() / 1000));
-bot.setValue("seen." + lnick + ".msg", message);
+// Provide data for the !stalk command
+API.setValue("seen." + lnick + ".time", Math.floor(new Date().getTime() / 1000));
+API.setValue("seen." + lnick + ".msg", message);
 
-if (nick == 'Bot' || nick == 'MsLuvaLuva') {
+if (lnick == 'bot' || lnick == 'msluvaluva') {
 	// Do nothing
 } else {
 	var isBad = lnick.match(/[0-9]|^[A-Z][a-z]+$/) || lnick.length < 4;
@@ -33,20 +34,20 @@ if (nick == 'Bot' || nick == 'MsLuvaLuva') {
 			++i;
 		}
 		var keyy = 'badnick.' + ident + host;
-		var count = bot.getValue(keyy);
+		var count = API.getValue(keyy);
 		if (!count) count = 0;
-		bot.getLog().info(keyy + " ==> " + count);
+		API.info(keyy + " ==> " + count);
 		if (count % 4 == 0) {
 			var example = "Example: " + bad + " would be " + BOLD + "/nick " + good + BOLD + " (only a-z and no spaces)";
-			bot.sendNotice(nick,
+			API.notice(nick,
 					"Please write " + BOLD + "/nick FirstnameLastname" + BOLD +
 					" You must use your Popmundo name in this chat. " + example);
 		}
 		++count;
-		bot.setValue(keyy, count);
+		API.setValue(keyy, count);
 	} else {
 
-		var warnings = bot.getValue('lowercase.warnings');
+		var warnings = API.getValue('lowercase.warnings');
 		if (!warnings) {
 			warnings = { }
 		}
@@ -56,13 +57,13 @@ if (nick == 'Bot' || nick == 'MsLuvaLuva') {
 				warning = new Warning(nick, 0);
 			}
 			++warning.count;
-			//bot.getLog().info("Warning count: " + warning.count);
+			//API.info("Warning count: " + warning.count);
 
 			if (warning.count % 5 == 0) {
-				bot.sendNotice(nick, "Please don't use a lowercase nick while talking in channel.")
+				API.notice(nick, "Please don't use a lowercase nick while talking in channel.")
 			}
 			if (warning.count % 8 == 0) {
-				bot.getLog().info(nick + " warning count: " + warning.count);
+				API.info(nick + " warning count: " + warning.count);
 				var w = [
 					"$nick, please fix your nick...",
 					"$nick, fix your nick... <3",
@@ -71,12 +72,12 @@ if (nick == 'Bot' || nick == 'MsLuvaLuva') {
 					"If you are gonna stay here and talk with us, fix your nickname $nick."
 				];
 				var line = w[ Math.floor(Math.random() * w.length) ];
-				//bot.sendMessage(channel, nick + ", go away since you're already pretending to be away. Or fix your nick <3");
-				bot.sendMessage(channel, line.replace(/\$nick/, nick));
+				//API.say(channel, nick + ", go away since you're already pretending to be away. Or fix your nick <3");
+				API.say(channel, line.replace(/\$nick/, nick));
 			} else if (warning.count == 20) {
-				bot.sendMessage(channel, nick + ", go away or fix your nickname! NOW!");
+				API.say(channel, nick + ", go away or fix your nickname! NOW!");
 			} else if (warning.count == 30) {
-				bot.sendMessage(channel, nick + ", go away and stay away!");
+				API.say(channel, nick + ", go away and stay away!");
 			}
 			warnings[nick] = warning;
 		} else {
@@ -84,7 +85,7 @@ if (nick == 'Bot' || nick == 'MsLuvaLuva') {
 				delete warnings[lnick];
 			}
 		}
-		//bot.getLog().info("Warnings: " + warnings);
-		bot.setValue('lowercase.warnings', warnings);
+		//API.info("Warnings: " + warnings);
+		API.setValue('lowercase.warnings', warnings);
 	}
 }

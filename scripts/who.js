@@ -2,16 +2,19 @@
 // @example !who
 // @example !who Jonas Zapatero
 // @example !who 3 Mark Ward
-var p = bot.encode(param);
-var line = ""+bot.fetchUrl("http://popodeus.com/namesearch/find.jsp?q="+p);
+var p = API.encode(param);
+var line = API.getPageAsText("http://popodeus.com/namesearch/find.jsp?q="+p);
+API.info(line);
 if (line) {
-	bot.sendMessage(channel, line);
+	API.say(channel, line);
 	var lnick = "" + nick.toLowerCase();
 	if (line.indexOf("1:") == 0) {
 		// reply contained multiple number choices
-		bot.setValue("who."+lnick+"!"+ident+"@host", param);
+		API.setValue("who."+lnick+"!"+ident+"@host", param);
+		API.setValue("who.time."+lnick+"!"+ident+"@host", Math.floor(new Date().getTime()/1000));
 	} else {
 		// remove any query
-		bot.setValue("who."+lnick+"!"+ident+"@host", null);
+		API.setValue("who."+lnick+"!"+ident+"@host", null);
+		API.setValue("who.time."+lnick+"!"+ident+"@host", null);
 	}
 }
