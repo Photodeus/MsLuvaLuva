@@ -115,7 +115,7 @@ public class ScriptManager {
 				Arrays.sort(scripts);
 				List<EventScript> trsc = new ArrayList<EventScript>(scripts.length);
 				for (File script : scripts) {
-					log.info("Compiling: " + script.toString());
+					log.finer("Compiling: " + script.toString());
 					BufferedReader reader = null;
 					try {
 						reader = new BufferedReader(new FileReader(script));
@@ -131,7 +131,7 @@ public class ScriptManager {
 						}
 					}
 				}
-				log.info(evt + ": " + trsc.size() + " scripts");
+				log.fine(evt + ": " + trsc.size() + " scripts");
 				eventscriptcache.put(evt, trsc);
 			}
 		}
@@ -185,10 +185,10 @@ public class ScriptManager {
 									   final String cmd,
 									   final String param) {
 		TriggerScript triggerScript = getTriggerScript(scriptdir, cmd);
-		log.info("triggerScript: " + triggerScript);
+		log.fine("triggerScript: " + triggerScript);
 
 		if (triggerScript != null) {
-			log.info("triggerScript.hasTimeoutPassed: " + triggerScript.hasTimeoutPassed());
+			log.finer("triggerScript.hasTimeoutPassed: " + triggerScript.hasTimeoutPassed());
 			if (!triggerScript.hasTimeoutPassed()) {
 				String timeoutmsg = "Too fast - Timeout is " + (triggerScript.getTimeout() / 1000) + "s. Try again later.";
 				bot.sendNotice(sender, timeoutmsg);
@@ -208,7 +208,7 @@ public class ScriptManager {
 			*/
 		} else {
 			bot.sendNotice(sender, "Unknown command: " + cmd);
-			log.info(sender + "@" + hostname + " tried to invoke unknown command: " + cmd);
+			log.fine(sender + "@" + hostname + " tried to invoke unknown command: " + cmd);
 		}
 		return false;
 	}
@@ -221,7 +221,7 @@ public class ScriptManager {
 			BufferedReader reader = null;
 			try {
 				reader = new BufferedReader( new FileReader(script) );
-				log.info("Compiling " + script);
+				log.finer("Compiling " + script);
 				retval = new TriggerScript(cmd, reader);
 			} catch (Exception e) {
 				log.log(Level.SEVERE, e.getMessage(), e);
@@ -296,41 +296,37 @@ public class ScriptManager {
 			}
 
 			public String getPageAsText(final String url) {
-				log.info("getPageAsText: " + url);
+				log.finer("getPageAsText: " + url);
 				Page page = getPage(url);
 				if (page != null) {
 					String x = page.getWebResponse().getContentAsString();
-					log.info(x);
+					log.finest(x);
 					return x;
 				}
 				return "";
 			}
 
 			public synchronized Page getPage(final String url, final int timeout) {
-				log.info("getPage: " + url);
+				log.fine("getPage: " + url);
 				try {
 					Page retval;
 					if (client == null) {
-						log.info("new WebClient");
+						log.finest("new WebClient");
 						client = new WebClient(FIREFOX);
 						client.addRequestHeader("accept-charset", "UTF-8");
 						client.addRequestHeader("accept-language", "en-US");
-						log.info("setJavaScriptEnabled");
 						client.setJavaScriptEnabled(false);
-						log.info("setTimeOut");
 						client.setTimeout(timeout);
-						log.info("new CookieManager");
 						CookieManager cookiemanager = new CookieManager();
 						client.setCookieManager(cookiemanager);
 					}
-					log.info("client = " + client.toString());
 					//cookiemanager.clearCookies();
-					log.info("new WebRequestSettings");
+					log.finest("new WebRequestSettings");
 					WebRequestSettings settings = new WebRequestSettings(new URL(url));
 					settings.setCharset("UTF-8");
 					retval = client.getPage(settings);
 					log.finer(url + " => " + retval);
-					log.info("retval: " + retval);
+					log.finer("retval: " + retval);
 					return retval;
 				} catch (Exception e) {
 					log.log(Level.INFO, "...exiting", e);
@@ -445,7 +441,7 @@ public class ScriptManager {
 			}
 
 			public void say(final String target, final String line) {
-				log.info("Say: " + target + ": " + line);
+				log.fine("Say: " + target + ": " + line);
 				bot.sendMessage(target, line);
 			}
 
