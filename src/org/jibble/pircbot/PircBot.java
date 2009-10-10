@@ -132,8 +132,7 @@ public abstract class PircBot implements ReplyConstants {
 	 * @throws IrcException			  if the server would not let us join it.
 	 * @throws NickAlreadyInUseException if our nick is already in use on the server.
 	 */
-	public final synchronized void connect(String hostname) throws IOException, IrcException,
-			NickAlreadyInUseException {
+	public final synchronized void connect(String hostname) throws IOException, IrcException {
 		this.connect(hostname, 6667, null);
 	}
 
@@ -148,7 +147,7 @@ public abstract class PircBot implements ReplyConstants {
 	 * @throws IrcException			  if the server would not let us join it.
 	 * @throws NickAlreadyInUseException if our nick is already in use on the server.
 	 */
-	public final synchronized void connect(String hostname, int port) throws IOException, IrcException, NickAlreadyInUseException {
+	public final synchronized void connect(String hostname, int port) throws IOException, IrcException {
 		this.connect(hostname, port, null);
 	}
 
@@ -165,7 +164,8 @@ public abstract class PircBot implements ReplyConstants {
 	 * @throws IrcException			  if the server would not let us join it.
 	 * @throws NickAlreadyInUseException if our nick is already in use on the server.
 	 */
-	public final synchronized void connect(String hostname, int port, String password) throws IOException, IrcException, NickAlreadyInUseException {
+	public final synchronized void connect(String hostname, int port, String password)
+			throws IOException, IrcException, NickAlreadyInUseException {
 
 		_server = hostname;
 		_port = port;
@@ -2850,6 +2850,13 @@ public abstract class PircBot implements ReplyConstants {
 		return userArray;
 	}
 
+	public final boolean isNickInChannel(String channel, String nick) {
+		Set<User> users = channel_users.get(new Channel(channel));
+		if (users != null) {
+			return users.contains(new User(User.Prefix.NONE, nick));
+		}
+		return false;
+	}
 
 	/**
 	 * Returns an array of all channels that we are in.  Note that if you
