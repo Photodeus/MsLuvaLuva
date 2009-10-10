@@ -59,7 +59,9 @@ public class ChatLogger {
 		@Override
 		public String toString() {
 			String localtime = dateformat.format(timestamp);
-			return timestamp + " [" + localtime + "] -!- " + line;
+			String prefix = "-!- ";
+			if (line.startsWith("*")) prefix = "";
+			return timestamp + " [" + localtime + "] " + prefix + line;
 		}
 	}
 
@@ -122,7 +124,7 @@ public class ChatLogger {
 	protected ChatLogger() { }
 
 	public ChatLogger(final File logdir) {
-		System.out.println("New ChatLogger into " + logdir.toString());
+		System.out.println(new Date() + " New ChatLogger logging into " + logdir.toString());
 		this.logdir = logdir;
 		this.channels = new HashMap<String, ChannelLog>(5);
 	}
@@ -139,6 +141,7 @@ public class ChatLogger {
 			channels.put(channel.toLowerCase(), log);
 			log.writer.write("--- Log opened " + new Date());
 			log.writer.newLine();
+			log.writer.flush();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -147,7 +150,7 @@ public class ChatLogger {
 	public void leaveChannel(final String _channel) {
 		ChannelLog log = channels.get(_channel.toLowerCase());
 		if (log != null) {
-			System.out.println("Closing " + _channel + " log");
+			System.out.println(new Date() + " Closing " + _channel + " log");
 			log.close();
 		}
 	}
@@ -203,6 +206,7 @@ public class ChatLogger {
 	 * Closes all open logs
 	 */
 	public void closeAll() {
+		System.out.println(new Date() + " ChatLogger.closeAll");
 		for (ChannelLog log : channels.values()) {
 			log.close();
 		}
@@ -229,6 +233,7 @@ public class ChatLogger {
 		if (log != null) {
 			return log.lines.iterator();
 		}
+		// Return empty iterator
 		return new Iterator<ChatLine>() {
 			public boolean hasNext() {
 				return false;
