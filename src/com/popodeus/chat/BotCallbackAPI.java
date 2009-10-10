@@ -40,7 +40,7 @@ public interface BotCallbackAPI {
 	 * @param target
 	 * @param line
 	 */
-	void sendMessage(final String target, final String line);
+	void say(final String target, final String line);
 	/**
 	 * Sends a CTCP action to the designated target nick or channel
 	 * @param target
@@ -65,4 +65,15 @@ public interface BotCallbackAPI {
 	User[] getUsers(final String channel);
 
 	String getGreeting();
+
+	String[] getChannels();
+
+	void joinChannel(String channel);
+	void joinChannel(String channel, String key);
+	void partChannel(String channel);
+	// Won't work unless bot is op
+	void channelBan(String channel, String hostmask);
+	void channelUnban(String channel, String hostmask);
+	// Might not work unless bot is op
+	void sendInvite(String nick, String channel);
 }
