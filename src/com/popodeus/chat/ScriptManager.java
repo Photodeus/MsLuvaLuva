@@ -135,6 +135,7 @@ public class ScriptManager {
 				eventscriptcache.put(evt, trsc);
 			}
 		}
+		log.info("Done compiling");
 	}
 
 	public void runOnEventScript(final BotCallbackAPI bot, final MsLuvaLuva.Event event, final String sender, final String login, final String hostname, final String message, final String channel) {
@@ -191,7 +192,7 @@ public class ScriptManager {
 			log.finer("triggerScript.hasTimeoutPassed: " + triggerScript.hasTimeoutPassed());
 			if (!triggerScript.hasTimeoutPassed()) {
 				String timeoutmsg = "Too fast - Timeout is " + (triggerScript.getTimeout() / 1000) + "s. Try again later.";
-				bot.sendNotice(sender, timeoutmsg);
+				bot.notice(sender, timeoutmsg);
 			} else {
 				return triggerScript.runScript(getAPI(triggerScript), sender, login, hostname, message,
 						channel, cmd, param);
@@ -207,7 +208,7 @@ public class ScriptManager {
 			}
 			*/
 		} else {
-			bot.sendNotice(sender, "Unknown command: " + cmd);
+			bot.notice(sender, "Unknown command: " + cmd);
 			log.fine(sender + "@" + hostname + " tried to invoke unknown command: " + cmd);
 		}
 		return false;
@@ -442,15 +443,17 @@ public class ScriptManager {
 
 			public void say(final String target, final String line) {
 				log.fine("Say: " + target + ": " + line);
-				bot.sendMessage(target, line);
+				bot.say(target, line);
 			}
 
 			public void action(final String target, final String line) {
-				bot.sendAction(target, line);
+				log.fine("Act: " + target + ": " + line);
+				bot.act(target, line);
 			}
 
 			public void notice(final String notice, final String line) {
-				bot.sendNotice(notice, line);
+				log.fine("Notice: " + notice + ": " + line);
+				bot.notice(notice, line);
 			}
 
 			public void reinit() {
@@ -459,6 +462,7 @@ public class ScriptManager {
 			}
 
 			public void email(final String recipient, final String topic, final String htmlmessage) {
+				log.info("email => " + recipient);
 				// TODO email function
 			}
 
