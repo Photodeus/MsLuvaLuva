@@ -216,8 +216,8 @@ public class User {
     
     /**
      * Returns the result of calling the compareTo method on lowercased
-     * nicks. This is useful for sorting lists of User objects.
-     * 
+     * nicks only. This is useful for sorting lists of User objects.
+     * Ignores any prefixes (Voice, Op, etc.)
      * @return the result of calling compareTo on lowercased nicks.
      */
     public int compareTo(Object o) {
