@@ -46,13 +46,13 @@ public interface BotCallbackAPI {
 	 * @param target
 	 * @param line
 	 */
-	void sendAction(final String target, final String line);
+	void act(final String target, final String line);
 	/**
 	 * Sends a notice to the designated target nick or channel
 	 * @param notice
 	 * @param line
 	 */
-	void sendNotice(final String notice, final String line);
+	void notice(final String notice, final String line);
 
 	String getNick();
 
