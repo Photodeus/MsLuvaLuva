@@ -68,12 +68,12 @@ public interface BotCallbackAPI {
 
 	String[] getChannels();
 
-	void joinChannel(String channel);
-	void joinChannel(String channel, String key);
-	void partChannel(String channel);
+	void join(String channel);
+	void join(String channel, String key);
+	void part(String channel);
 	// Won't work unless bot is op
 	void channelBan(String channel, String hostmask);
 	void channelUnban(String channel, String hostmask);
 	// Might not work unless bot is op
-	void sendInvite(String nick, String channel);
+	void invite(String nick, String channel);
 }
