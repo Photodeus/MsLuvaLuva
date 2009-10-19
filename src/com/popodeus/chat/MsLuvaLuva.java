@@ -30,6 +30,7 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 	//private Map<String, Set<User>> channel_users;
 
 	private ChatLogger logger;
+	private BotRemote remote;
 
 	private String quitmsg = "Bye bye!";
 	private long startupTime, connectTime;
@@ -68,7 +69,7 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 		UNSUPPORTED,
 	}
 
-	public MsLuvaLuva() {
+	public MsLuvaLuva() throws Exception {
 		startupTime = System.currentTimeMillis();
 		log.info("MsLuvaLuva v" + version + " is starting...");
 		random = new Random();
@@ -81,11 +82,14 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 				new File(properties.getString(PROP_VARIABLE_CACHE_DIR))
 		);
 
+		remote = new BotRemote(8123, this, scriptmanager.getAPI(null));
+
 		runner = new Thread(this);
 		runner.start();
 	}
 
 	public boolean byebye() {
+		remote.shutDown();
 		runner.interrupt();
 		return true;
 	}
@@ -136,20 +140,22 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 		int counter = 500;
 		while (!isConnected()) {
 			log.info(new Date() + " attempting reconnect");
-			logger.logAction(null, "Attempting to reconnect");
+			logger.logAction(null, "Attempting to connect to server (tries left: "+counter+")", true);
 			if (do_connect()) {
 				if (rejoinmessage_enabled) {
 					String rejoinmsg = properties.getString(PROP_REJOINMSG);
 					if (rejoinmsg != null && rejoinmsg.length() > 0) {
 						for (String channel : getChannels()) {
-							sendMessage(channel, rejoinmsg);
+							say(channel, rejoinmsg);
 						}
 					}
 				}
 				return;
 			}
 			try {
-				Thread.sleep(10000+random.nextInt(10)*1000);
+				long sleep = 30000 + random.nextInt(30) * 1000;
+				log.fine("Sleeping " + sleep + " ms");
+				Thread.sleep(sleep);
 			} catch (InterruptedException e) {
 			}
 			if (--counter == 0) {
@@ -161,7 +167,9 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 	protected boolean do_connect() {
 		String basenick = properties.getString(PROP_NICK);
 		String altnick = properties.getString(PROP_ALTNICK);
-		if (altnick == null) altnick = basenick + "_";
+		if (altnick == null) {
+			altnick = basenick + "_";
+		}
 		try {
 			//channel_users = new HashMap<String, Set<User>>();
 			setName(basenick);
@@ -180,22 +188,26 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 				} else {
 					reconnect();
 				}
-				//identify(PASSWD);-
-				sendRawLine("NICKSERV GHOST " + basenick + " " + properties.getString(PROP_PASSWORD));
-				setName(basenick);
 			} catch (Exception e) {
+				System.err.println(e);
+				return false;
 			}
+			sendRawLine("NICKSERV GHOST " + basenick + " " + properties.getString(PROP_PASSWORD));
+			setName(basenick);
+		} catch (java.net.UnknownHostException e) {
+			System.err.println(e);
+			return false;
 		} catch (Exception e) {
 			e.printStackTrace();
 			return false;
 		}
 		connectTime = System.currentTimeMillis();
-		log.info("Setting mode +b");
-		setMode(getNick(), "+b");
 		for (String channel : properties.getString(PROP_CHANNELS).split(",")) {
 			//channel_users.put(channel, new TreeSet<User>());
-			joinChannel(channel);
+			join(channel);
 		}
+		log.info("Setting mode +b");
+		setMode(getNick(), "+b");
 		return true;
 	}
 
@@ -233,6 +245,22 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 		return "Hi $nick!";
 	}
 
+	public void channelBan(final String channel, final String hostmask) {
+		logger.logAction(channel, "Trying to set ban on host " + hostmask, true);
+		ban(channel, hostmask);
+	}
+
+	public void channelUnban(final String channel, final String hostmask) {
+		logger.logAction(channel, "Trying to remove ban from host " + hostmask, true);
+		unBan(channel, hostmask);
+	}
+
+	// Might not work unless bot is op
+	public void invite(final String nick, final String channel) {
+		logger.logAction(channel, "Inviting " + nick);
+		sendInvite(nick, channel);
+	}
+
 	public void reloadGreetings() {
 		greetings = new ArrayList<String>(100);
 		try {
@@ -252,7 +280,11 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 	@Override
 	protected void onNickChange(final String oldNick, final String login, final String hostname, final String newNick) {
 		log.info(oldNick + " is now known as " + newNick);
-		logger.logAction(null, oldNick + " is now known as " + newNick);
+		for (String channel : getChannels()) {
+			if (isNickInChannel(channel, oldNick) || isNickInChannel(channel,  oldNick)) {
+				logger.logAction(null, oldNick + " is now known as " + newNick);
+			}
+		}
 		/*
 		User olduser = new User(User.Prefix.NONE, oldNick);
 		for (String channel : channel_users.keySet()) {
@@ -312,7 +344,7 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 		String[] channels = properties.getString(PROP_CHANNELS).split(",");
 		Arrays.sort(channels);
 		if (Arrays.binarySearch(channels, channel) >= 0) {
-			joinChannel(channel);
+			join(channel);
 		} else {
 			sendNotice(sourceNick, "I'm not supposed to be on that channel.");
 		}
@@ -333,7 +365,7 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 			final MsLuvaLuva _this = this;
 			TimerTask tt = new TimerTask() {
 				public void run() {
-					_this.joinChannel(channel);
+					_this.join(channel);
 				}
 			};
 			final int KICKOUT_TIME = 15000;
@@ -453,6 +485,39 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 		scriptmanager.runOnEventScript(this, Event.UNSUPPORTED, null, null, null, line, null);
 	}
 
+	public void join(final String channel) {
+		joinChannel(channel);
+	}
+
+	public void join(final String channel, final String key) {
+		joinChannel(channel, key);
+	}
+
+	public void part(final String channel) {
+		partChannel(channel);
+	}
+
+	public final void say(String target, String message) {
+		if (target.startsWith("#")) {
+			logger.log(target, getNick(), message, true);
+		}
+		sendMessage(target, message);
+	}
+
+	public final void act(String target, String message) {
+		if (target.startsWith("#")) {
+			logger.log(target, getNick(), message, true);
+		}
+		sendAction(target, message);
+	}
+
+	public final void notice(String target, String message) {
+		if (target.startsWith("#")) {
+			logger.log(target, getNick(), message, true);
+		}
+		sendNotice(target, message);
+	}
+
 	public long getStartupTime() {
 		return startupTime;
 	}
@@ -569,7 +634,14 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 		return line;
 	}
 
+	
 	public static void main(String[] args) {
-		new MsLuvaLuva();
+		try {
+			new MsLuvaLuva();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
+
+
 }
