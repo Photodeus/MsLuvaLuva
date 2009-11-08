@@ -341,9 +341,9 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 
 	@Override
 	protected void onInvite(final String targetNick, final String sourceNick, final String sourceLogin, final String sourceHostname, final String channel) {
-		String[] channels = properties.getString(PROP_CHANNELS).split(",");
+		String[] channels = properties.getString(PROP_CHANNELS).toLowerCase().split(",");
 		Arrays.sort(channels);
-		if (Arrays.binarySearch(channels, channel) >= 0) {
+		if (Arrays.binarySearch(channels, channel.toLowerCase()) >= 0) {
 			join(channel);
 		} else {
 			sendNotice(sourceNick, "I'm not supposed to be on that channel.");
