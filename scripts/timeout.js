@@ -7,11 +7,11 @@ if (API.isOp(channel, nick) || API.isOwner(channel, nick) || API.isAdmin(channel
 		var time = parseInt(param.match(/\d+/));
 		if (time > 0 && time <= 120) {
 			API.notice(nick, "Ok: Setting command timeout to " + time + " seconds");
-			API.setTimeout(time * 1000);
+			API.setTimeout("*", time * 1000);
 			no_timeout = true;
 		}
 	} else {
-		API.say(channel, "Command timeout is " + (API.timeout / 1000) + " seconds");
+		API.say(channel, "Command timeout is " + API.getTimeout("*")/1000 + " seconds");
 	}
 } else {
 	API.notice(nick, 'Not enough privileges to do that.');
