@@ -53,6 +53,7 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 	public static final String PROP_GREET_CHANNELS = "channels.greet";
 	public static final String PROP_SCRIPT_DIR = "script.dir";
 	public static final String PROP_VERSION_STRING = "version.string";
+	public static final String PROP_TELNET_PORT = "telnet.port";
 	public static final String PROP_LOG_DIR = "log.dir";
 	static final String MSG_ON_IGNORE_LIST = "You are on the bot ignore list.";
 
@@ -82,14 +83,12 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 				new File(properties.getString(PROP_VARIABLE_CACHE_DIR))
 		);
 
-		remote = new BotRemote(8123, this, scriptmanager.getAPI(null));
-
 		runner = new Thread(this);
 		runner.start();
 	}
 
 	public boolean byebye() {
-		remote.shutDown();
+		if (remote != null) remote.shutDown();
 		runner.interrupt();
 		return true;
 	}
@@ -104,6 +103,17 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 			rejoinmessage_enabled = Boolean.parseBoolean(properties.getString(PROP_REJOINMSG_ENABLED));
 			if (logger != null) logger.closeAll();
 			logger = new ChatLogger(new File(properties.getString(PROP_LOG_DIR)));
+
+			String telnet = properties.getString(PROP_TELNET_PORT);
+			if (telnet != null) {
+				int listenport = Integer.parseInt(telnet);
+				if (listenport > 1024) {
+					if (remote != null) {
+						remote.shutDown();
+					}
+					remote = new BotRemote(listenport, this, scriptmanager);
+				}
+			}
 		} catch (Error ex) {
 			log.log(Level.SEVERE, ex.getMessage(), ex);
 		} catch (Exception ex) {
@@ -129,7 +139,7 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 			logger.closeAll();
 			quitServer(quitmsg);
 		}
-		scriptmanager.saveScriptVars(new File(properties.getString(PROP_VARIABLE_CACHE_DIR)));
+		scriptmanager.saveScriptVars();
 		System.exit(0);
 	}
 
@@ -611,7 +621,6 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 		boolean retval = false;
 		if (cmd.matches("[a-z_]+")) {
 			retval = scriptmanager.runTriggerScript(this,
-					properties.getString(PROP_SCRIPT_DIR), 
 					sender, login, hostname, message, channel, cmd, param);
 		}
 		return retval;
