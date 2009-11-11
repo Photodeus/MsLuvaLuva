@@ -24,16 +24,16 @@ public class BotRemote extends Thread {
 	private ServerSocket socket;
 	private Map<String, ScriptableObject> callbacks;
 	private BotCallbackAPI bot;
-	private ScriptAPI scripts;
+	private ScriptManager scriptmanager;
 
-	public BotRemote(final int port, BotCallbackAPI bot, final ScriptAPI scripts) throws IOException {
+	public BotRemote(final int port, BotCallbackAPI bot, final ScriptManager scriptmanager) throws IOException {
 		log.entering("BotRemote", "constructor", port);
 		this.bot = bot;
-		this.scripts = scripts;
+		this.scriptmanager = scriptmanager;
 		InetAddress ipaddr = InetAddress.getLocalHost();
-		socket = new ServerSocket(port, maxconnections, ipaddr);
+		this.socket = new ServerSocket(port, maxconnections, ipaddr);
 		// socket.setSoTimeout(0); // wait infinitely
-		callbacks = new HashMap<String, ScriptableObject>();
+		this.callbacks = new HashMap<String, ScriptableObject>();
 		this.start();
 	}
 
@@ -52,37 +52,60 @@ public class BotRemote extends Thread {
 				BufferedReader br = new BufferedReader(new InputStreamReader(s.getInputStream(), "UTF-8"));
 				PrintWriter pw = new PrintWriter(s.getOutputStream(), true);
 				// TODO ask for password?
-				pw.println("Welcome to MsLuvaLuva. Type 'help' for commands.");
+				printConsole(pw, "Welcome to MsLuvaLuva. Type 'help' for commands.");
 				String line;
 				while ((line = br.readLine()) != null) {
 					log.info(s.getRemoteSocketAddress() + ": " + line);
 					if (line.startsWith("help")) {
-						pw.println("ping");
-						pw.println("quit");
-						pw.println("reset [scriptname]");
+						printConsole(pw, "ping");
+						printConsole(pw, "quit");
+						printConsole(pw, "reset [scriptname]");
+						printConsole(pw, "run scriptname[.js] [params]");
+						printConsole(pw, "!scriptname [#channel] [params]");
 
-						pw.println("say <#channel|nick> message");
-						pw.println("notice <#channel|nick> message");
-						pw.println("join #channel");
-						pw.println("part #channel");
-						pw.println("list #channel");
-						pw.println("status");
+						printConsole(pw, "say <#channel|nick> message");
+						printConsole(pw, "notice <#channel|nick> message");
+						printConsole(pw, "join #channel");
+						printConsole(pw, "part #channel");
+						printConsole(pw, "list #channel");
+						printConsole(pw, "status");
 
-						pw.println("BYE   (be careful with this one!)");
+						printConsole(pw, "BYE   (be careful with this one!)");
 					}
 					if (line.startsWith("ping")) {
-						pw.write("PONG");
+						printConsole(pw, "PONG");
 					}
 					if (line.startsWith("quit")) {
-						pw.write("Bye bye baby!\n");
+						printConsole(pw, "Bye bye baby!");
 						s.close();
 						break;
 					}
+					if (line.startsWith("!") && line.contains(" ")) {
+						// !who #Popodeus 12345 => Prints out value to #Popmundo
+						// !who 12345 => should return value to telnet. Right now won't work...
+						String target, msg, cmd, param;
+						int idx = line.indexOf(" ");
+						int idx2 = line.indexOf(" ", idx);
+						cmd = line.substring(1, idx);
+						target = line.substring(idx+1, idx2);
+						param = line.substring(idx2+1);
+						scriptmanager.runTriggerScript(
+								bot, "__telnet", "telnet", "127.0.0.1",
+								line,
+								target,
+								cmd,
+								param
+						);
+					}
 					if (line.startsWith("reset")) {
-						scripts.clearScriptCache();
+						printConsole(pw, "Clearing cache for all scripts");
+						scriptmanager.compileEventScripts();
+						scriptmanager.clearTriggerSciptCache();
 					}
 					if (line.startsWith("reset ")) {
-						scripts.clearScriptCacheFor(line.substring(line.indexOf(" ") + 1));
+						String name = line.substring(line.indexOf(" ") + 1);
+						printConsole(pw, "Clearing cache for " + name);
+						scriptmanager.compileTriggerScript(name);
 					}
 					if (line.startsWith("BYE")) {
 						log.info("QUITTING bot via remote");
@@ -94,6 +117,7 @@ public class BotRemote extends Thread {
 					if (line.startsWith("say ")) {
 						String[] parts = line.split(" ", 3);
 						if (parts.length == 3) {
+							printConsole(pw, "Saying to " + parts[1] + ": " + parts[2]);
 							bot.say(parts[1], parts[2]);
 						}
 					}
@@ -113,21 +137,23 @@ public class BotRemote extends Thread {
 						}
 					}
 					if (line.startsWith("part ")) {
-						bot.part(line.substring(line.indexOf(" ") + 1));
+						String chan = line.substring(line.indexOf(" ") + 1);
+						printConsole(pw, "Leaving " + chan);
+						bot.part(chan);
 					}
 					if (line.startsWith("list #")) {
 						StringBuilder sb = new StringBuilder(400);
 						for (User u : bot.getUsers(line.substring(line.indexOf("#")))) {
 							sb.append(u.toString() + ", ");
 						}
-						pw.write(sb.toString());
-						pw.flush();
+						printConsole(pw, sb.toString());
 						sb = null;
 					}
 
 					if (line.startsWith("callback:")) {
 						String[] parts = line.split(":", 3);
 						if (parts.length == 3) {
+							printConsole(pw, "Callback called for " + parts[1] + " with " + parts[2]);
 							notifyCallbacks(parts[1], parts[2]);
 						}
 					}
@@ -136,13 +162,11 @@ public class BotRemote extends Thread {
 						for (String c : bot.getChannels()) {
 							ch.append(c + ",");
 						}
-						String status =
-								"Bot nick:" + bot.getNick() +
-										"Startup time:" + bot.getStartupTime() +
-										"Connected time:" + bot.getConnectTime() +
-										"On channels:" + ch.toString();
-						pw.write(status);
-						pw.flush();
+
+						printConsole(pw, "Bot nick:" + bot.getNick() +
+								"Startup time:" + bot.getStartupTime() +
+								"Connected time:" + bot.getConnectTime() +
+								"On channels:" + ch.toString());
 					}
 				}
 				pw.close();
@@ -157,6 +181,10 @@ public class BotRemote extends Thread {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+	public void printConsole(final PrintWriter pw, final String message) {
+		pw.println(">>> " + message);
+		pw.flush();
 	}
 
 	public void shutDown() {
@@ -194,8 +222,10 @@ public class BotRemote extends Thread {
 				data
 		});
 		ScriptableObject obj = callbacks.get(event);
-		if (obj != null) {
 
+		if (obj != null) {
+			// TODO so uh... there should be an interface to call here
+			// nothing is implemented yet
 		}
 	}
 }
