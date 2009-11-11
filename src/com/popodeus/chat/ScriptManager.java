@@ -118,10 +118,14 @@ public class ScriptManager {
 			for (Map.Entry<String, Object> e : globalBindings.entrySet()) {
 				String key = e.getKey();
 				Object val = e.getValue();
-				if (val instanceof Serializable) {
-					Serializable s = (Serializable) val;
-					oos.writeUTF(key);
-					oos.writeObject(s);
+				try {
+					if (val instanceof Serializable) {
+						Serializable s = (Serializable) val;
+						oos.writeUTF(key);
+						oos.writeObject(s);
+					}
+				} catch (Exception ex) {
+					log.info("Unable to serialize: " + key + " => " + val);
 				}
 			}
 		} catch (IOException e) {
