@@ -15,6 +15,7 @@ import java.util.logging.LogManager;
 import java.io.*;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.text.NumberFormat;
 
 import sun.org.mozilla.javascript.internal.Scriptable;
 import org.jibble.pircbot.User;
@@ -52,11 +53,44 @@ public class ScriptManager {
 		this.scriptDir = scriptDir;
 		this.variableCacheDir = scriptVariableDir;
 		this.client = null;
-		compileEventScripts(scriptDir);
-		loadScriptVars(scriptVariableDir);
+		compileEventScripts();
+		loadScriptVars();
 	}
 
-	public void loadScriptVars(final File cachedir) {
+	public void loadScriptVars() {
+		log.entering(getClass().getName(), "loadScriptVars", variableCacheDir);
+		File[] fs = variableCacheDir.listFiles(new FilenameFilter() {
+			public boolean accept(final File file, final String s) {
+				return file.getName().endsWith(".dat");
+			}
+		});
+		if (fs != null && fs.length > 0) {
+			Arrays.sort(fs);
+
+			File f = fs[fs.length-1];
+			if (f.exists()) {
+				log.info("Loading script variables from " + f);
+				ObjectInputStream ois = null;
+				try {
+					ois = new ObjectInputStream(new FileInputStream(f));
+					while (ois.available() > 0) {
+						String key = ois.readUTF();
+						Object value = ois.readObject();
+						log.finest(key + ": " + value);
+						globalBindings.put(key, value);
+					}
+				} catch (Exception e) {
+					e.printStackTrace();
+				} finally {
+					if (ois != null) {
+						try {
+							ois.close();
+						} catch (IOException e) {
+						}
+					}
+				}
+			}
+		}
 		/*
 		log.info("Loading all script variables");
 		for (File f : cachedir.listFiles()) {
@@ -74,8 +108,32 @@ public class ScriptManager {
 		*/
 	}
 
-	public void saveScriptVars(final File cachedir) {
-		log.entering(getClass().getName(), "saveScriptVars", cachedir);
+	public void saveScriptVars() {
+		log.entering(getClass().getName(), "saveScriptVars", variableCacheDir);
+		File f = new File(variableCacheDir, "variables-" + System.currentTimeMillis() + ".dat");
+		log.info("Saving script variables into " + f);
+		ObjectOutputStream oos = null;
+		try {
+			oos = new ObjectOutputStream(new FileOutputStream(f));
+			for (Map.Entry<String, Object> e : globalBindings.entrySet()) {
+				String key = e.getKey();
+				Object val = e.getValue();
+				if (val instanceof Serializable) {
+					Serializable s = (Serializable) val;
+					oos.writeUTF(key);
+					oos.writeObject(s);
+				}
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			if (oos != null) {
+				try {
+					oos.close();
+				} catch (IOException e) {
+				}
+			}
+		}
 		/*
 		log.info("Saving all script variables to disk");
 		if (cachedir != null) {
@@ -100,6 +158,22 @@ public class ScriptManager {
 		*/
 	}
 
+	/**
+	 * Recompiles all scripts in in the script directory
+	 * that was designated during construction of this ScriptManager.
+	 */
+	public void compileEventScripts() {
+		compileEventScripts(scriptDir);
+	}
+
+	/**
+	 * (Re)Compiles a set of scripts found in the given directory
+	 * and fills the current script cache with those.
+	 * Giving a different script directory as parameter will not change the default
+	 * directory given during construction of this ScriptManager.
+	 * @param scriptdir
+	 * @see #setScriptDir
+	 */
 	public void compileEventScripts(File scriptdir) {
 		log.info("Compiling event scripts...");
 		eventscriptcache = new HashMap<MsLuvaLuva.Event, List<EventScript>>(MsLuvaLuva.Event.values().length * 2);
@@ -159,33 +233,47 @@ public class ScriptManager {
 		}
 	}
 
+	public File getScriptDir() {
+		return scriptDir;
+	}
+
+	/**
+	 * Sets the default directory from where to load scripts
+	 * @param scriptDir
+	 */
+	public void setScriptDir(final File scriptDir) {
+		this.scriptDir = scriptDir;
+	}
+
 	/*
 	public TriggerScript getTriggerScript(final String cmd) {
 		return scriptcache.get(cmd);
 	}
 	*/
 
-	public TriggerScript getTriggerScript(final String scriptdir, final String cmd) {
+	public TriggerScript getTriggerScript(final String cmd) {
 		TriggerScript triggerScript;
 		if (scriptcache.containsKey(cmd)) {
 			log.finest("Script has compiled cache for " + cmd);
 			triggerScript = scriptcache.get(cmd);
 		} else {
-			triggerScript = compileTriggerScript(scriptdir, cmd);
+			triggerScript = compileTriggerScript(cmd);
 			scriptcache.put(cmd, triggerScript);
 		}
 		return triggerScript;
 	}
+	public void clearTriggerSciptCache() {
+		scriptcache.clear();
+	}
 
 	protected boolean runTriggerScript(final BotCallbackAPI bot,
-									   final String scriptdir,
 									   final String sender,
 									   final String login, final String hostname,
 									   final String message,
 									   final String channel,
 									   final String cmd,
 									   final String param) {
-		TriggerScript triggerScript = getTriggerScript(scriptdir, cmd);
+		TriggerScript triggerScript = getTriggerScript(cmd);
 		log.fine("triggerScript: " + triggerScript);
 
 		if (triggerScript != null) {
@@ -214,9 +302,9 @@ public class ScriptManager {
 		return false;
 	}
 
-	private TriggerScript compileTriggerScript(final String scriptdir, final String cmd) {
+	protected TriggerScript compileTriggerScript(final String cmd) {
 		TriggerScript retval = null;
-		File script = new File(scriptdir, cmd + ".js");
+		File script = new File(scriptDir, cmd + ".js");
 		log.finest("Locating script file " + script);
 		if (script.exists()) {
 			BufferedReader reader = null;
@@ -531,6 +619,36 @@ public class ScriptManager {
 
 			public String getGreeting() {
 				return bot.getGreeting();
+			}
+
+			public String formatNum(final double num) {
+				return NumberFormat.getNumberInstance().format(num);
+			}
+
+			public String secondsAsPassedTime(final int seconds) {
+				// Untested
+				if (seconds < 0) {
+					return String.valueOf(seconds);
+				}
+				if (seconds < 60) {
+					return seconds + " seconds ago";
+				}
+				if (seconds < 60*60) {
+					return Math.floor(seconds/60) + " minutes ago";
+				}
+				if (seconds < 24*60*60) {
+					int h = seconds / (60 * 60);
+					int min = (seconds - (h * 60)) / 60;
+					return h + " hours and " + min + " minutes ago";
+				}
+				int d = seconds / (24 * 60 * 60);
+				int h = (seconds - d * 24 * 60 * 60) / (60 * 60);
+				int m = seconds % 60;
+				return h + " days and " + h + " hours ago";
+			}
+
+			public void flushScriptVars() {
+				saveScriptVars();
 			}
 
 			/**
