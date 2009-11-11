@@ -6,7 +6,7 @@ function endsWith(string, suffix)
 
 if (message.indexOf('http://') >= 0) {
 	var link = message.match(/.*(http:\/\/[^ ]+).*/);
-	API.info('urltitle: ' + link);
+	//API.info('urltitle: ' + link);
 	if (link) {
 		link = link[1];
 		//API.info("Fetching link: " + link);
@@ -23,27 +23,25 @@ if (message.indexOf('http://') >= 0) {
 			// API.info("Link ignored: is on disallowed list. ");
 		} else {
 			if (link.indexOf('youtube.com') > 0) {
-				// TODO needs youtube code from urltitle.jsp
-			} else {
-				var page = API.getPage(link);
-				var title = page.getTitleText();
-				if (title != "") {
+				// TODO port youtube title code from urltitle.jsp
+				var param = ""+API.encode(link);
+				var url = "http://popodeus.com/chat/bot/urltitle.jsp?"+param;
+				var title = ""+API.getPageAsText(url)
+				if (title.length > 4) {
+					API.info("Title: " + title);
 					response = title;
 					response_to = channel;
 					cancel = true;
 				}
+			} else {
+				var page = API.getPage(link);
+				var title = page.getTitleText();
+				if (title != "") {
+					response = ""+title;
+					response_to = channel;
+					cancel = true;
+				}
 			}
-			/*
-			var param = ""+API.encode(link);
-			var url = "http://popodeus.com/chat/bot/urltitle.jsp?"+param;
-			var title = ""+API.getPageAsText(url)
-			if (title.length > 4) {
-				API.info("Title: " + title);
-				response = title;
-				response_to = channel;
-				cancel = true;
-			}
-			*/
 		}
 	}
 } else if (message.match(/\d{5,8}\.\d{1,4}/)) {
