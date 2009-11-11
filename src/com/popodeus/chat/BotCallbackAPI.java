@@ -3,6 +3,7 @@ package com.popodeus.chat;
 import org.jibble.pircbot.User;
 
 /**
+ * This is the API MsLuvaLuva exposes to the world.
  * Provides callback functions directly related to the bot itself.
  * Can be used from the Logger, ScriptManager etc.
  * <br/>photodeus
