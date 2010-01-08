@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
  */
 public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 
-	private float version = 1.4f;
+	private float version = 1.5f;
 	private Logger log = Logger.getLogger("com.popodeus.chat.MsLuvaLuva");
 	private Thread runner;
 	protected Random random;
@@ -40,21 +40,6 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 	protected boolean silence;
 
 	protected ResourceBundle properties;
-	public static final String PROP_NICK = "nick";
-	public static final String PROP_ALTNICK = "altnick";
-	public static final String PROP_GREETINGS_FILE = "greetings.file";
-	public static final String PROP_REJOINMSG = "rejoinmsg";
-	public static final String PROP_REJOINMSG_ENABLED = "rejoinmsg.enabled";
-	public static final String PROP_QUITMSG = "quitmsg";
-	public static final String PROP_VARIABLE_CACHE_DIR = "script.variable.dir";
-	public static final String PROP_SERVER = "server";
-	public static final String PROP_PASSWORD = "password";
-	public static final String PROP_CHANNELS = "channels";
-	public static final String PROP_GREET_CHANNELS = "channels.greet";
-	public static final String PROP_SCRIPT_DIR = "script.dir";
-	public static final String PROP_VERSION_STRING = "version.string";
-	public static final String PROP_TELNET_PORT = "telnet.port";
-	public static final String PROP_LOG_DIR = "log.dir";
 	static final String MSG_ON_IGNORE_LIST = "You are on the bot ignore list.";
 
 	enum Event {
@@ -79,8 +64,8 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 
 		scriptmanager = new ScriptManager(
 				this,
-				new File(properties.getString(PROP_SCRIPT_DIR)),
-				new File(properties.getString(PROP_VARIABLE_CACHE_DIR))
+				new File(properties.getString(Config.SCRIPT_DIR)),
+				new File(properties.getString(Config.VARIABLE_CACHE_DIR))
 		);
 
 		runner = new Thread(this);
@@ -97,14 +82,14 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 		try {
 			log.info("MsLuvaLuva reinitialize");
 			properties = ResourceBundle.getBundle("config");
-			setLogin(properties.getString(PROP_NICK));
-			setVersion(properties.getString(PROP_VERSION_STRING));
-			quitmsg = properties.getString(PROP_QUITMSG);
-			rejoinmessage_enabled = Boolean.parseBoolean(properties.getString(PROP_REJOINMSG_ENABLED));
+			setLogin(properties.getString(Config.NICK));
+			setVersion(properties.getString(Config.VERSION_STRING));
+			quitmsg = properties.getString(Config.QUITMSG);
+			rejoinmessage_enabled = Boolean.parseBoolean(properties.getString(Config.REJOINMSG_ENABLED));
 			if (logger != null) logger.closeAll();
-			logger = new ChatLogger(new File(properties.getString(PROP_LOG_DIR)));
+			logger = new ChatLogger(new File(properties.getString(Config.LOG_DIR)));
 
-			String telnet = properties.getString(PROP_TELNET_PORT);
+			String telnet = properties.getString(Config.TELNET_PORT);
 			if (telnet != null) {
 				int listenport = Integer.parseInt(telnet);
 				if (listenport > 1024) {
@@ -153,7 +138,7 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 			logger.logAction(null, "Attempting to connect to server (tries left: "+counter+")", true);
 			if (do_connect()) {
 				if (rejoinmessage_enabled) {
-					String rejoinmsg = properties.getString(PROP_REJOINMSG);
+					String rejoinmsg = properties.getString(Config.REJOINMSG);
 					if (rejoinmsg != null && rejoinmsg.length() > 0) {
 						for (String channel : getChannels()) {
 							say(channel, rejoinmsg);
@@ -175,8 +160,8 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 	}
 
 	protected boolean do_connect() {
-		String basenick = properties.getString(PROP_NICK);
-		String altnick = properties.getString(PROP_ALTNICK);
+		String basenick = properties.getString(Config.NICK);
+		String altnick = properties.getString(Config.ALTNICK);
 		if (altnick == null) {
 			altnick = basenick + "_";
 		}
@@ -184,17 +169,17 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 			//channel_users = new HashMap<String, Set<User>>();
 			setName(basenick);
 			if (!isConnected()) {
-				connect(properties.getString(PROP_SERVER));
+				connect(properties.getString(Config.SERVER));
 			} else {
 				reconnect();
 			}
-			identify(properties.getString(PROP_PASSWORD));
+			identify(properties.getString(Config.PASSWORD));
 		} catch (NickAlreadyInUseException naius) {
 			log.info("Nick " + basenick + " was already in use...");
 			setName(altnick);
 			try {
 				if (!isConnected()) {
-					connect(properties.getString(PROP_SERVER));
+					connect(properties.getString(Config.SERVER));
 				} else {
 					reconnect();
 				}
@@ -202,7 +187,7 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 				System.err.println(e);
 				return false;
 			}
-			sendRawLine("NICKSERV GHOST " + basenick + " " + properties.getString(PROP_PASSWORD));
+			sendRawLine("NICKSERV GHOST " + basenick + " " + properties.getString(Config.PASSWORD));
 			setName(basenick);
 		} catch (java.net.UnknownHostException e) {
 			System.err.println(e);
@@ -212,7 +197,7 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 			return false;
 		}
 		connectTime = System.currentTimeMillis();
-		for (String channel : properties.getString(PROP_CHANNELS).split(",")) {
+		for (String channel : properties.getString(Config.CHANNELS).split(",")) {
 			//channel_users.put(channel, new TreeSet<User>());
 			join(channel);
 		}
@@ -274,7 +259,7 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 	public void reloadGreetings() {
 		greetings = new ArrayList<String>(100);
 		try {
-			BufferedReader br = new BufferedReader(new FileReader(properties.getString(PROP_GREETINGS_FILE)));
+			BufferedReader br = new BufferedReader(new FileReader(properties.getString(Config.GREETINGS_FILE)));
 			String s;
 			while ((s = br.readLine()) != null) {
 				String tmp = s.trim();
@@ -351,7 +336,7 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 
 	@Override
 	protected void onInvite(final String targetNick, final String sourceNick, final String sourceLogin, final String sourceHostname, final String channel) {
-		String[] channels = properties.getString(PROP_CHANNELS).toLowerCase().split(",");
+		String[] channels = properties.getString(Config.CHANNELS).toLowerCase().split(",");
 		Arrays.sort(channels);
 		if (Arrays.binarySearch(channels, channel.toLowerCase()) >= 0) {
 			join(channel);
@@ -418,7 +403,7 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 			actOnTrigger(sender, login, hostname, message, null);
 			/*
 			TriggerScript scr = scriptmanager.getTriggerScript(
-					properties.getString(PROP_SCRIPT_DIR),
+					properties.getString(Config.SCRIPT_DIR),
 					cmd);
 			// TODO different timeout queues for private messages (and per nick) and public messages?
 			if (!scr.hasTimeoutPassed()) {
