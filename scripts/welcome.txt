@@ -1,18 +1,26 @@
-Hello $nick my old friend, I've come to talk with you again.
-Hello $nick. I love you! Let's talk some trash.
+hHello $nick my old friend, I've come to talk with you again.
+Hello $nick. Let's talk some trash.
+Hello $nick. Let's trash this place.
 Ay caramba! It's $nick, the tequila is on me!
+Mamma mia! It's $nick, the pizza's on me!
 Mamma mia! It's $nick!
 Holy cow, it's $nick! Got milk?
 Holy smoke! $nick puffed in.
+$nick, you can't come in here without saying hi first!
 Hello and welcome to the last days of your sanity, $nick!
 Welcome to the the little shop of horrors, $nick! Feed me! Feeeeeeeed meeee!
 Hello $nick! It's a bee-yooo-tiful day for chatting. Don't you agree?
 You had me at hello, $nick.
-Yo $nick! Wazzup.
 Hey there $nick. Came to spill your guts? Just make sure to clean up the mess later on.
 Oh it's you again, $nick!
+Oh noes, it's $nick!
 Hey there $nick. Welcome <3
 Wow, finally someone cool enters chat! Look everyone, it's $nick!
+Wow, finally someone sexy enters chat! Look everyone, it's $nick!
+Wow, finally someone rude enters chat! Look everyone, it's $nick!
+Wow, finally someone smart enters chat! Look everyone, it's $nick!
+I'm not sure what to say about $nick. I'm all out of ideas.
+$nick, you're my best friend in the whole world!
 This is getting better and better, $nick just entered!
 *pokes* $nick
 $nick, Hello, good evening and welcome to the middle of the film. The good part is about to start!
@@ -21,7 +29,7 @@ $nick! I was JUST thinking of you! Well, not really... I only said it to be nice
 How are you today $nick?
 Ready for some awesome nolife with us, $nick?
 Be alert $nick, you just stirred up the beehive.
-Be alert $nick, you just stirred up the beehive... or there's no honey for you!
+Be alert $nick, you just stirred up the ant colony.
 $nick. Is that a smile I see on your face? Oh come on, I know you are smiling now :D
 $nick, you look like you could need a hug.
 $nick, you look like you could need a kiss.
@@ -31,6 +39,7 @@ $nick, you better be behaving today!
 $nick came to cheer us up!
 $nick please, these people are boring, save me!
 Now this was a surprise, it's $nick!
+I'm not all too surprise to see $nick enter... Hi.
 Somehow I just knew $nick was around the corner. I've been expecting you!
 Well hello there $nick! Where have you been my entire life?
 Sup, $nick?
@@ -44,13 +53,13 @@ Quick everyone, hide the candy, $nick is here!
 I feel a great disturbance in the Force. Oh, wait nevermind. It's was just $nick who entered.
 How nice of you $nick to join us. Come and sit on my lap and dance.
 Speaking of the devil... Welcome $nick!
-I wonder how $nick is doing..... Well. let's ask!
+I wonder how $nick is doing..... Well. Let's ask?
 The more the merrier, $nick. Welcome!
 Well wouldn't you know, it's $nick!
 $nick, are you sure you want to enter here?
 O hai thar $nick!
-Cum on in, $nick. Don't pay attention to Brenda too much, she's had one too many redbulls.
-So I was like just about to... oh $nick... hello... >_>
+Cum on in, $nick. Don't pay attention to Brenda too much, she's had one too many red bulls.
+So I was like just about to... oh $nick... hello... o_O
 Entrez-vous $nick, bienvenue au notre mansion des malades mentales.
 And in the left corner, $nick!
 Come on in $nick, we won't bite... hard...
@@ -58,9 +67,8 @@ Hello there $nick, ready to be part of this social experiment?
 Welcome to the world of tomorrow, $nick
 Let me introduce you all, here is $nick.
 Just in time $nick, we were about to light the barbecue!
-Don't touch the food $nick, it's spoiled.
+Yea, like. Whatever.
 Whatever you do, do not mention that in front of...  Ohshi- ... hi $nick!
-Yeehaw, time to start the party, cause $nick is here!
 I can't believe it, it's $nick! Waazzup!?
 Hey $nick! Don't upset me today, ok? I'm feeling a bit grumpy.
 Heeey $nick, let's kiss and snuggle?
@@ -71,5 +79,15 @@ I never know if it's fiction or reality when $nick enters the channel... Hi, are
 Is this the real life or is this just fantasy, $nick?
 Last night I dreamt of you, $nick. I'm so happy to have you here.
 Naughty or nice, $nick?
+Good or evil, $nick?
+Are you fun or boring, $nick?
 Well hello there $nick... come here often? ;)
 I'll show mine if you show yours $nick, how about it...?
+Oh my, is it a bit too hot in here or did $nick just enter? ;)
+I remember you, $nick!
+Have we met before, $nick?
+Rock, paper or scissors, $nick?
+Hugs, kisses or snuggles, $nick?
+Came to show off your oratorical skills, $nick?
+Aha, I can see you $nick!
+I can't wait to hear what $nick has to say today!
