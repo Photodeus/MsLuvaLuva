@@ -1,7 +1,7 @@
 package com.popodeus.chat;
 
 import javax.script.ScriptException;
-import java.io.BufferedReader;
+import java.io.Reader;
 
 /**
  * photodeus
@@ -10,7 +10,7 @@ import java.io.BufferedReader;
  */
 public class EventScript extends ScriptBase {
 
-	public EventScript(final String name, final BufferedReader scriptsrc) throws ScriptException {
+	public EventScript(final String name, final Reader scriptsrc) throws ScriptException {
 		super(name, scriptsrc);
 	}
 }
