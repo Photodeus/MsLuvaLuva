@@ -1,6 +1,6 @@
 package com.popodeus.chat;
 
-import java.io.BufferedReader;
+import java.io.Reader;
 
 /**
  *
@@ -8,7 +8,7 @@ import java.io.BufferedReader;
  */
 public class TriggerScript extends ScriptBase {
 
-	public TriggerScript(final String trigger, final BufferedReader scriptsrc) {
+	public TriggerScript(final String trigger, final Reader scriptsrc) {
 		super(trigger, scriptsrc);
 	}
 
