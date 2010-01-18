@@ -6,14 +6,14 @@ package com.popodeus.chat;
  * 7:29:11 AM
  */
 enum Event {
-	JOIN,
-	MESSAGE,
 	ACTION,
-	NICKCHANGE,
-	RIGHTS,
+	JOIN,
 	KICK,
 	LEAVE,
-	TOPIC,
+	MESSAGE,
+	NICKCHANGE,
 	QUIT,
+	RIGHTS,
+	TOPIC,
 	UNSUPPORTED,;
 }
