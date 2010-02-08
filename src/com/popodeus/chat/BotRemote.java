@@ -34,6 +34,7 @@ public class BotRemote extends Thread {
 		this.socket = new ServerSocket(port, maxconnections, ipaddr);
 		// socket.setSoTimeout(0); // wait infinitely
 		this.callbacks = new HashMap<String, ScriptableObject>();
+		this.setDaemon(true);
 		this.start();
 	}
 
@@ -43,7 +44,7 @@ public class BotRemote extends Thread {
 		boolean shouldrun = true;
 		try {
 			do {
-				log.info("Network socket listening");
+				log.info("Network socket listening at port " + socket.getLocalPort());
 				// Block until someone connects
 				Socket s = socket.accept();
 
@@ -191,11 +192,14 @@ public class BotRemote extends Thread {
 		try {
 			socket.close();
 			socket = null;
-		} catch (IOException e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 
+	/**
+	 * TODO not implemented
+	 */
 	public String sendCommand(String command) {
 		log.entering("com.popodeus.chat.BotRemote", "sendCommand", command);
 		String response = "";
@@ -216,6 +220,9 @@ public class BotRemote extends Thread {
 		callbacks.remove(event);
 	}
 
+	/**
+	 * TODO not implemented
+	 */
 	private void notifyCallbacks(String event, String data) {
 		log.entering("com.popodeus.chat.BotRemote", "notifyCallbacks", new Object[]{
 				event,
