@@ -473,7 +473,6 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 	@Override
 	protected void onPart(final String channel, final String sender, final String login, final String hostname, final String reason) {
 		logger.logAction(null, sender + " [" + login + "@" + hostname + "] has left " + channel + " [" + reason + "]", sender);
-		super.onPart(channel, sender, login, hostname, reason);	//To change body of overridden methods use File | Settings | File Templates.
 		scriptmanager.runOnEventScript(this, Event.LEAVE, sender, login, hostname, reason, channel);
 	}
 
