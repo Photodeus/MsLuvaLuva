@@ -13,9 +13,9 @@ import java.util.logging.Logger;
 import java.util.logging.Level;
 import java.util.logging.LogManager;
 import java.io.*;
-import java.net.URL;
 import java.net.URLEncoder;
 import java.text.NumberFormat;
+import java.text.DecimalFormat;
 
 import sun.org.mozilla.javascript.internal.Scriptable;
 import org.jibble.pircbot.User;
@@ -31,81 +31,86 @@ public class ScriptManager {
 
 	public static final String UTF8 = "UTF-8";
 	public static final int DEFAULT_HTTP_TIMEOUT = 8000;
-	private WebClient client;
 
-	private Set<String> ignoredNicks;
-	private Map<String, TriggerScript> scriptcache;
-	private Map<MsLuvaLuva.Event, List<EventScript>> eventscriptcache;
-	private Bindings globalBindings;
+	private final Set<String> ignoredNicks;
+	private final Map<String, TriggerScript> scriptcache;
+	private final Map<Event, List<EventScript>> eventscriptcache;
+	private final Bindings globalBindings;
 
 	public Scriptable last_result;
 	private BotCallbackAPI bot;
-	private static long DEFAULT_TIMEOUT = 10 * 1000L; // milliseconds
+	private ChatLogger logger;
 	private int DEFAULT_IGNORE_TIME = 10 * 60; // 10 hours
 	private File scriptDir;
 	private File variableCacheDir;
+	private SecurityManager security;
 
-	public ScriptManager(final BotCallbackAPI bot, File scriptDir, File scriptVariableDir) {
+	public ScriptManager(final BotCallbackAPI bot, final ChatLogger logger, final File scriptDir, final File scriptVariableDir) {
 		this.bot = bot;
+		this.logger = logger;
 		this.scriptcache = new HashMap<String, TriggerScript>(64);
+		this.eventscriptcache = new HashMap<Event, List<EventScript>>(Event.values().length*2);
 		this.globalBindings = new SimpleBindings();
 		this.ignoredNicks = new HashSet<String>(10);
 		this.scriptDir = scriptDir;
 		this.variableCacheDir = scriptVariableDir;
-		this.client = null;
+		//ContextFactory.initGlobal(new SandboxContextFactory());
 		compileEventScripts();
 		loadScriptVars();
 	}
 
 	public void loadScriptVars() {
 		log.entering(getClass().getName(), "loadScriptVars", variableCacheDir);
-		File[] fs = variableCacheDir.listFiles(new FilenameFilter() {
-			public boolean accept(final File file, final String s) {
-				return file.getName().endsWith(".dat");
+		File[] fs = variableCacheDir.listFiles(new FileFilter() {
+			public boolean accept(final File file) {
+				return file.getName().endsWith(".dat") && file.length() > 100;
 			}
 		});
 		if (fs != null && fs.length > 0) {
-			Arrays.sort(fs);
-
+			log.info(variableCacheDir + " contains " + fs.length + " valid files");
+			Arrays.sort(fs, new Comparator<File>() {
+				public int compare(final File file1, final File file2) {
+					// Sort by actual file date, even though file name sort should do it too
+					return (int) Math.signum(file1.lastModified()-file2.lastModified());
+				}
+			});
+			// Just pick the last element, since it's the one with most recent date
 			File f = fs[fs.length-1];
-			if (f.exists()) {
-				log.info("Loading script variables from " + f);
-				ObjectInputStream ois = null;
-				try {
-					ois = new ObjectInputStream(new FileInputStream(f));
-					while (ois.available() > 0) {
-						String key = ois.readUTF();
-						Object value = ois.readObject();
-						log.finest(key + ": " + value);
-						globalBindings.put(key, value);
-					}
-				} catch (Exception e) {
-					e.printStackTrace();
-				} finally {
-					if (ois != null) {
-						try {
-							ois.close();
-						} catch (IOException e) {
+			log.info("Loading script variables from " + f);
+			ObjectInputStream ois = null;
+			try {
+				ois = new ObjectInputStream(new FileInputStream(f));
+				while (ois.available() > 0) {
+					String key = null;
+					try {
+						key = ois.readUTF();
+						Object value;
+						value = ois.readObject();
+						log.info("\t" + key + " => " + value + " ("+value.getClass()+")");
+						if (key.endsWith(".time")) {
+							// special handling?
 						}
+						//log.finest(key + ": " + value);
+						globalBindings.put(key, value);
+						key = null;
+					} catch (Exception ex) {
+						log.warning("Bad value: " + (key != null ? key + " :" : "") + ex.toString());
+					}
+				}
+			} catch (Exception e) {
+				System.err.println(e);
+				e.printStackTrace();
+			} finally {
+				if (ois != null) {
+					try {
+						ois.close();
+					} catch (IOException e) {
 					}
 				}
 			}
+		} else {
+			log.warning("Could not find any saved script variables in " + variableCacheDir);
 		}
-		/*
-		log.info("Loading all script variables");
-		for (File f : cachedir.listFiles()) {
-			try {
-				ScriptableInputStream ois = new ScriptableInputStream(new FileInputStream(f), null);
-				String var = f.getName().replace(".dat", "");
-				Scriptable tmp = (Scriptable) ois.readObject();
-				log.fine(var + " = " + tmp);
-				scriptvars.put(var, tmp);
-				ois.close();
-			} catch (Exception ex) {
-				log.log(Level.SEVERE, "Failed to load variable cache from " + f + ". ", ex);
-			}
-		}
-		*/
 	}
 
 	public void saveScriptVars() {
@@ -113,19 +118,26 @@ public class ScriptManager {
 		File f = new File(variableCacheDir, "variables-" + System.currentTimeMillis() + ".dat");
 		log.info("Saving script variables into " + f);
 		ObjectOutputStream oos = null;
+		NumberFormat df = DecimalFormat.getIntegerInstance();
 		try {
 			oos = new ObjectOutputStream(new FileOutputStream(f));
 			for (Map.Entry<String, Object> e : globalBindings.entrySet()) {
 				String key = e.getKey();
 				Object val = e.getValue();
 				try {
-					if (val instanceof Serializable) {
-						Serializable s = (Serializable) val;
-						oos.writeUTF(key);
-						oos.writeObject(s);
+					log.fine("\t" + key + " => " + val + " (" + val.getClass() + ")");
+					//if (val instanceof Serializable) {
+					//	Serializable s = (Serializable) val;
+					oos.writeUTF(key);
+					if (key.endsWith(".time")) {
+						//oos.writeInt(Integer.parseInt(val.toString(), 16));
+						oos.writeInt(df.parse(val.toString()).intValue());
+					} else {
+						oos.writeObject(val);
 					}
+					//}
 				} catch (Exception ex) {
-					log.info("Unable to serialize: " + key + " => " + val);
+					log.info("Warning: Unable to serialize: " + key + " => " + val + ", " + ex);
 				}
 			}
 		} catch (IOException e) {
@@ -138,28 +150,6 @@ public class ScriptManager {
 				}
 			}
 		}
-		/*
-		log.info("Saving all script variables to disk");
-		if (cachedir != null) {
-			// Clear out old files first...
-			for (File f : cachedir.listFiles()) {
-				f.delete();
-			}
-			// Now start making new ones
-			for (Map.Entry<String, Scriptable> e : scriptvars.entrySet()) {
-				File f = new File(cachedir, e.getKey() + ".dat");
-				try {
-					Scriptable var = e.getValue();
-					Scriptable scope = var.getParentScope();
-					ScriptableOutputStream oos = new ScriptableOutputStream(new FileOutputStream(f), scope);
-					oos.writeObject(var);
-					oos.close();
-				} catch (Exception ex) {
-					log.log(Level.SEVERE, "Failed to save variable cache into " + f + ". ", ex);
-				}
-			}
-		}
-		*/
 	}
 
 	/**
@@ -171,32 +161,33 @@ public class ScriptManager {
 	}
 
 	/**
-	 * (Re)Compiles a set of scripts found in the given directory
-	 * and fills the current script cache with those.
+	 * (Re)Compiles a set of scripts found in the given directory (reading certain named
+	 * subdirectories under it) and fills the current script cache with compiled script
+	 * instances.
 	 * Giving a different script directory as parameter will not change the default
-	 * directory given during construction of this ScriptManager.
-	 * @param scriptdir
+	 * directory that was given during construction of this ScriptManager.
+	 * @param scriptdir The directory which to scan for sub-directories
 	 * @see #setScriptDir
 	 */
 	public void compileEventScripts(File scriptdir) {
 		log.info("Compiling event scripts...");
-		eventscriptcache = new HashMap<MsLuvaLuva.Event, List<EventScript>>(MsLuvaLuva.Event.values().length * 2);
+		eventscriptcache.clear();
 		FilenameFilter ff = new FilenameFilter() {
 			public boolean accept(final File dir, final String name) {
 				return name.endsWith(".js");
 			}
 		};
-		for (MsLuvaLuva.Event evt : MsLuvaLuva.Event.values()) {
-			File dir = new File(scriptdir, evt.name());
+		for (Event evt : Event.values()) {
+			final File dir = new File(scriptdir, evt.name());
 			if (dir.exists()) {
 				File[] scripts = dir.listFiles(ff);
 				Arrays.sort(scripts);
 				List<EventScript> trsc = new ArrayList<EventScript>(scripts.length);
 				for (File script : scripts) {
 					log.finer("Compiling: " + script.toString());
-					BufferedReader reader = null;
+					Reader reader = null;
 					try {
-						reader = new BufferedReader(new FileReader(script));
+						reader = new FileReader(script);
 						trsc.add(new EventScript(script.getName(), reader));
 					} catch (Exception e) {
 						log.log(Level.SEVERE, script.getName() + ": " + e);
@@ -211,20 +202,22 @@ public class ScriptManager {
 				}
 				log.fine(evt + ": " + trsc.size() + " scripts");
 				eventscriptcache.put(evt, trsc);
+			} else {
+				log.warning(dir + " didn't exist. Skipping.");
 			}
 		}
 		log.info("Done compiling");
 	}
 
-	public void runOnEventScript(final BotCallbackAPI bot, final MsLuvaLuva.Event event, final String sender, final String login, final String hostname, final String message, final String channel) {
+	public void runOnEventScript(final BotCallbackAPI bot, final Event event, final String sender, final String login, final String hostname, final String message, final String channel) {
 		log.entering(getClass().getName(), "runOnEventScript", new String[]{
 				sender, message, channel
 		});
-		log.finer(sender + ", " + event);
+		log.finer(sender + "!"+ login + "@" + hostname + ", event: " + event);
 		List<EventScript> scripts = eventscriptcache.get(event);
 		if (scripts != null) {
 			for (EventScript eventscript : scripts) {
-				log.finest("evaluating script: " + eventscript.getName());
+				log.finest("evaluating: " + eventscript.getName());
 				if (eventscript.runScript(getAPI(eventscript), sender,
 						login, hostname, message,
 						channel, eventscript.getName(), message)) {
@@ -248,12 +241,6 @@ public class ScriptManager {
 	public void setScriptDir(final File scriptDir) {
 		this.scriptDir = scriptDir;
 	}
-
-	/*
-	public TriggerScript getTriggerScript(final String cmd) {
-		return scriptcache.get(cmd);
-	}
-	*/
 
 	public TriggerScript getTriggerScript(final String cmd) {
 		TriggerScript triggerScript;
@@ -279,6 +266,12 @@ public class ScriptManager {
 									   final String param) {
 		TriggerScript triggerScript = getTriggerScript(cmd);
 		log.fine("triggerScript: " + triggerScript);
+
+		if (ignoredNicks.contains(sender) || ignoredNicks.contains(hostname)) {
+			bot.notice(sender, bot.getMessges().getString("reply.you.are.on.bot.ignore.list"));
+			log.fine("Ignored user " + sender + "!" + login + "@" + hostname + " was declined to use " + cmd);
+			return false;
+		}
 
 		if (triggerScript != null) {
 			log.finer("triggerScript.hasTimeoutPassed: " + triggerScript.hasTimeoutPassed());
@@ -308,12 +301,12 @@ public class ScriptManager {
 
 	protected TriggerScript compileTriggerScript(final String cmd) {
 		TriggerScript retval = null;
-		File script = new File(scriptDir, cmd + ".js");
+		final File script = new File(scriptDir, cmd + ".js");
 		log.finest("Locating script file " + script);
 		if (script.exists()) {
-			BufferedReader reader = null;
+			Reader reader = null;
 			try {
-				reader = new BufferedReader( new FileReader(script) );
+				reader = new FileReader(script);
 				log.finer("Compiling " + script);
 				retval = new TriggerScript(cmd, reader);
 			} catch (Exception e) {
@@ -336,14 +329,6 @@ public class ScriptManager {
 	public String normalize(final String nick) {
 		return nick.replace("_", "").replaceAll("[&~%@+]", "").toLowerCase();
 	}
-
-	public static final BrowserVersion FIREFOX =
-			new BrowserVersion(
-					"Mozilla",
-					"5.0",
-					"Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090729 Firefox/3.5.2",
-					"1.8",
-					3.5f);
 
 	public ScriptAPI getAPI(final ScriptBase script) {
 		return new ScriptAPI() {
@@ -377,7 +362,16 @@ public class ScriptManager {
 			}
 
 			public String[] listIgnores() {
-				return new String[0];  //To change body of implemented methods use File | Settings | File Templates.
+				String[] retval = new String[ignoredNicks.size()];
+				Iterator<String> it = ignoredNicks.iterator();
+				int i = 0;
+				while (it.hasNext()) {
+					retval[i++] = it.next();
+				}
+				return retval;
+			}
+			public void removeAllIgnores() {
+				ignoredNicks.clear();
 			}
 
 			public User[] getUsers(final String channel) {
@@ -390,7 +384,7 @@ public class ScriptManager {
 
 			public String getPageAsText(final String url) {
 				log.finer("getPageAsText: " + url);
-				Page page = getPage(url);
+				final Page page = getPage(url);
 				if (page != null) {
 					String x = page.getWebResponse().getContentAsString();
 					log.finest(x);
@@ -399,33 +393,20 @@ public class ScriptManager {
 				return "";
 			}
 
-			public synchronized Page getPage(final String url, final int timeout) {
-				log.fine("getPage: " + url);
-				try {
-					Page retval;
-					if (client == null) {
-						log.finest("new WebClient");
-						client = new WebClient(FIREFOX);
-						client.addRequestHeader("accept-charset", "UTF-8");
-						client.addRequestHeader("accept-language", "en-US");
-						client.setJavaScriptEnabled(false);
-						client.setTimeout(timeout);
-						CookieManager cookiemanager = new CookieManager();
-						client.setCookieManager(cookiemanager);
-					}
-					//cookiemanager.clearCookies();
-					log.finest("new WebRequestSettings");
-					WebRequestSettings settings = new WebRequestSettings(new URL(url));
-					settings.setCharset("UTF-8");
-					retval = client.getPage(settings);
-					log.finer(url + " => " + retval);
-					log.finer("retval: " + retval);
-					return retval;
-				} catch (Exception e) {
-					log.log(Level.INFO, "...exiting", e);
-					//log.log(Level.SEVERE, "...exiting", e);
-					return null;
+			public Page getPage(final String url, final int timeout) {
+				return bot.getPage(url, timeout);
+			}
+
+			public DomElement getFirstByXpath(final Page page, final String xpath) {
+				if (page instanceof HtmlPage) {
+					HtmlPage html = (HtmlPage) page;
+					return html.getFirstByXPath(xpath);
 				}
+				if (page instanceof XmlPage) {
+					XmlPage xml = (XmlPage) page;
+					return xml.getFirstByXPath(xpath);
+				}
+				return null;
 			}
 
 			/**
@@ -436,19 +417,36 @@ public class ScriptManager {
 			 * @see HtmlPage
 			 * @see #getAsText(com.gargoylesoftware.htmlunit.Page, String)
 			 */
-			public DomElement getByXpath(final Page page, final String xpath) {
+			public DomElement[] getByXpath(final Page page, final String xpath) {
 				if (page == null) {
-					return null;
+					return new DomElement[0];
 				}
+				DomElement[] retval;
 				if (page instanceof HtmlPage) {
 					HtmlPage html = (HtmlPage) page;
-					return html.getFirstByXPath(xpath);
-				}
-				if (page instanceof XmlPage) {
+					List<? extends DomElement> list = (List<? extends DomElement>) html.getByXPath(xpath);
+					/*
+					for (int i = 0; i < list.size(); i++) {
+						System.out.println("\t\t" + list.get(i).getClass() + ": " + list.get(i) );
+					}
+					*/
+					retval = new DomElement[list.size()];
+					for (int i=0; i<list.size(); i++) {
+						//System.out.println(list.get(i).getClass());
+						retval[i] = list.get(i);
+					}
+				} else if (page instanceof XmlPage) {
 					XmlPage xml = (XmlPage) page;
-					return xml.getFirstByXPath(xpath);
+					List<? extends DomElement> list = (List<? extends DomElement>) xml.getByXPath(xpath);
+					retval = new DomElement[list.size()];
+					for (int i=0; i<list.size(); i++) {
+						//System.out.println(list.get(i).getClass());
+						retval[i] = list.get(i);
+					}
+				} else {
+					retval = new DomElement[0];
 				}
-				return null;
+				return retval;
 			}
 
 			public String encode(final String param) {
@@ -490,14 +488,14 @@ public class ScriptManager {
 			 * @see HtmlPage
 			 */
 			public String getAsText(final Page page, final String xpath) {
-				DomElement elm = getByXpath(page, xpath);
+				DomElement elm = getFirstByXpath(page, xpath);
 				if (elm != null) {
 					return elm.asText();
 				}
 				return "";
 			}
 
-			public int getTimeout(final String script) {
+			public long getTimeout(final String script) {
 				ScriptBase csc = scriptcache.get(script);
 				if (csc != null) {
 					return csc.getTimeout();
@@ -518,18 +516,18 @@ public class ScriptManager {
 				}
 			}
 
-			public void setValue(String key, Object value) {
+			public void setValue(final String key, final Object value) {
 				log.finest("setValue: " + key + " => " + value);
 				globalBindings.put(key, value);
 			}
 
-			public Object removeValue(String key) {
+			public Object removeValue(final String key) {
 				Object removed = globalBindings.remove(key);
 				log.finest("removeValue: " + key + " => " + removed);
 				return removed;
 			}
 
-			public Object getValue(String key) {
+			public Object getValue(final String key) {
 				return globalBindings.get(key);
 			}
 
@@ -553,9 +551,10 @@ public class ScriptManager {
 				bot.reinitialize();
 			}
 
-			public void email(final String recipient, final String topic, final String htmlmessage) {
+			public boolean email(final String recipient, final String topic, final String htmlmessage) {
 				log.info("email => " + recipient);
 				// TODO email function
+				return false;
 			}
 
 			public long getStartupTime() {
@@ -572,6 +571,14 @@ public class ScriptManager {
 
 			public void debug(final String message) {
 				log.finer(message);
+			}
+			
+			public void setDebugLevel(final Level level) {
+				log.setLevel(level);
+			}
+
+			public Level getDebugLevel() {
+				return log.getLevel(); 
 			}
 
 			public long getLastRun() {
@@ -624,6 +631,9 @@ public class ScriptManager {
 			public String getGreeting() {
 				return bot.getGreeting();
 			}
+			public void reloadGreetings() {
+				bot.reloadGreetings();
+			}
 
 			public String formatNum(final double num) {
 				return NumberFormat.getNumberInstance().format(num);
@@ -655,15 +665,42 @@ public class ScriptManager {
 				saveScriptVars();
 			}
 
+			public Long  getLastActiveTime(final String nick, final String channel) {
+				return logger.getLastActivity(channel, nick);
+			}
+
+			public Iterator<Map.Entry<Integer, Integer>> getLineCounts(final String channel, final int... minutes) {
+				return logger.getLineCounts(channel, minutes);
+			}
+
+			public String getConfigValue(final String settingName, final String defaultValue) {
+				String retval = bot.getConfig().getString(settingName);
+				if (retval == null) retval = defaultValue;
+				return retval;
+			}
+
+			public boolean getConfigValueAsBoolean(final String settingName, final boolean defaultValue) {
+				boolean retval;
+				String s = bot.getConfig().getString(settingName);
+				if (s == null) retval = defaultValue;
+				else retval = Boolean.parseBoolean(s);
+				return retval;
+			}
+
+			public Iterator<ChatLogger.ChatLine> getLines(final String channel) {
+				return logger.getLines(channel);
+			}
+
 			/**
 			 * Shuts down the bot.
 			 * TODO privilege check
 			 */
 			public boolean byebye() {
-				log.info("Shutting down bot...");
+				log.info("Shutting down bot from " + script.getName());
 				//if (hasPrivileges(nick, ident, host))
 				return bot.byebye();
 			}
+
 		};
 	}
 }
