@@ -6,6 +6,10 @@ import org.jibble.pircbot.User;
 import org.w3c.dom.Element;
 
 import java.util.List;
+import java.util.SortedMap;
+import java.util.Map;
+import java.util.Iterator;
+import java.util.logging.Level;
 
 /**
  * API for scripts/plugins
@@ -16,7 +20,7 @@ import java.util.List;
 public interface ScriptAPI {
 
 	/**
-	 * Adds someone to command ignore, this disabling them from using commands
+	 * Adds someone to command ignore, thus disabling them from using script
 	 * @param nick
 	 * @param ident may be null
 	 * @param host may be null
@@ -40,6 +44,7 @@ v	 */
 	 * @see #addIgnore(String, String, String)
 	 */
 	boolean removeIgnore(String nick, String ident, String host);
+	void removeAllIgnores();
 
 	/**
 	 * Checks if someone is ignored
@@ -51,7 +56,11 @@ v	 */
 	User[] getUsers(String channel);
 	/**
 	 * Reads a Page (object) from the web. JavaScript is disabled when fetching
-	 * pages.
+	 * pages and default timeout is 8 seconds.
+	 * Multiple concurrent requests are not
+	 * possible, and this call is blocking. 
+	 * After script execution, the page object should be set to null.
+	 * @return null if request times out or another request is still pending. 
 	 * @see com.gargoylesoftware.htmlunit.html.HtmlPage
 	 * @see com.gargoylesoftware.htmlunit.xml.XmlPage 
 	 */
@@ -59,8 +68,9 @@ v	 */
 
 	/**
 	 * Get page contents as text, no matter if it's html, xml, text, json etc.
+	 * Only on request can be active at the same time.
 	 * @param url
-	 * @return
+	 * @return null if request times out or another request is still pending. 
 	 */
 	String getPageAsText(String url);
 
@@ -71,11 +81,14 @@ v	 */
 	 */
 	String getAsText(Page page, String xpath);
 	/**
-	 * Get specified node from html or xml page
+	 * Get specified nodes from html or xml page
 	 * @param page Page object that was returned by {@link #getPage(String)}
 	 * @param xpath XPath expression pointing to the node.
+	 * @return an array of DomElements or an empty array 
 	 */
-	DomElement getByXpath(Page page, String xpath);
+	//DomElement getByXpath(Page page, String xpath);
+	DomElement[] getByXpath(Page page, String xpath);
+	DomElement getFirstByXpath(Page page, String xpath);
 
 	/**
 	 * URLEncodes the string as UTF-8 escaped string, so it can be added to requests
@@ -96,7 +109,7 @@ v	 */
 	 * be returned
 	 * @param script Script name, for example "who", "stalk" or "ud"
 	 */
-	int getTimeout(String script);
+	long getTimeout(String script);
 
 	/**
 	 * Sets timeout in seconds for a script, for example "ud"
@@ -140,7 +153,7 @@ v	 */
 	 * Reinitialize the script host. Use with care!
 	 */
 	void reinit();
-	void email(String recipient, String topic, String htmlmessage);
+	boolean email(String recipient, String topic, String htmlmessage);
 
 	/**
 	 * Return in seconds how long time ago the bot was started up.
@@ -166,6 +179,8 @@ v	 */
 	 */
 	void debug(String line);
 
+	void setDebugLevel(final Level level);
+	Level getDebugLevel();
 	/**
 	 * When script was last run.
 	 * Each script will only get the last runtime for the same script
@@ -185,10 +200,18 @@ v	 */
 	void clearScriptCache();
 	void reloadLoggingConfig();
 	String getGreeting();
+	void reloadGreetings();
 
 	String formatNum(double num);
 	String secondsAsPassedTime(int seconds);
 
 	void flushScriptVars();
 	//void loadScriptVars();
+
+	Long getLastActiveTime(String nick, final String channel);
+	Iterator<Map.Entry<Integer, Integer>> getLineCounts(final String channel, final int... minutes);
+	
+	String getConfigValue(String settingName, String defaultValue);
+	boolean getConfigValueAsBoolean(String settingName, boolean defaultValue);
+	Iterator<ChatLogger.ChatLine> getLines(String channel);
 }
