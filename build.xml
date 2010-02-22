@@ -45,7 +45,7 @@
 				srcdir="src/test/"
 				destdir="bin/" />
 		<junit>
-			<classpath path="lib/junit-4.7.jar" />
+			<classpath path="bin/;bin/test/;lib/junit-4.7.jar" />
 			<formatter type="brief" usefile="false" />
 			<test name="com.popodeus.chat.ChatLoggerTest" />
 		</junit>
