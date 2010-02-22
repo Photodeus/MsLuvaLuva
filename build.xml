@@ -1,0 +1,54 @@
+<project name="MsLuvaLuva IRC bot" default="compile" basedir=".">
+
+	<property file="build.properties"/>
+
+	<path id="classpath">
+		<fileset dir="${jdk.home}/jre/lib/" includes="**/*.jar"/>
+		<fileset dir="lib/" includes="**/*.jar"/>
+	</path>
+
+	<target name="compile">
+		<mkdir dir="bin"/>
+
+		<javac
+				executable="${jdk.home}/bin/javac"
+				target="1.5"
+				classpathref="classpath"
+				srcdir="src/"
+				destdir="bin/"/>
+	</target>
+
+	<target name="jar" depends="compile">
+		<mkdir dir="dist/"/>
+		
+		<jar compress="true"
+			 destfile="dist/MsLuvaLuva-mini.jar">
+
+			<fileset dir="bin/">
+				<include name="**/*.class"/>
+				<include name="scripts/"/>
+				<exclude name="test/"/>
+			</fileset>
+			
+			<fileset dir="src/">
+				<include name="*.properties"/>
+			</fileset>
+			
+		</jar>
+	</target>
+	
+	<target name="test" depends="compile">
+		<javac
+				executable="${jdk.home}/bin/javac"
+				target="1.5"
+				classpathref="classpath"
+				srcdir="src/test/"
+				destdir="bin/" />
+		<junit>
+			<classpath path="lib/junit-4.7.jar" />
+			<formatter type="brief" usefile="false" />
+			<test name="com.popodeus.chat.ChatLoggerTest" />
+		</junit>
+	</target>
+
+</project>
