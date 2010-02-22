@@ -1,19 +1,19 @@
 package com.popodeus.chat;
 
 import com.sun.script.javascript.RhinoScriptEngine;
+import com.popodeus.chat.scriptsystem.SandboxContextFactory;
 
-import javax.script.Bindings;
-import javax.script.CompiledScript;
-import javax.script.ScriptException;
-import javax.script.SimpleBindings;
+import javax.script.*;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 import java.util.logging.Logger;
 import java.util.logging.Level;
 import java.util.concurrent.LinkedBlockingDeque;
-import java.io.IOException;
 import java.io.BufferedReader;
 import java.io.Reader;
+
+import sun.org.mozilla.javascript.internal.RhinoException;
+//import sun.org.mozilla.javascript.internal.ContextFactory;
 
 /**
  * photodeus
@@ -41,58 +41,63 @@ public abstract class ScriptBase {
 	private Pattern ptrn = Pattern.compile(".*@timeout\\s+(\\d+)\\d+.*");
 	private Pattern notimeout = Pattern.compile(".*@notimeout.*");
 	private static RhinoScriptEngine engine;
-	private CompiledScript csc;
+	private static long DEFAULT_TIMEOUT = 10 * 1000L; // milliseconds
+	//private CompiledScript csc;
 	protected Logger log = Logger.getLogger("com.popodeus.chat.ScriptBase");
 	private long lastRun;
-	private int timeout;
+	private long timeout = DEFAULT_TIMEOUT;
 	private String name;
+	private StringBuilder source;
 	private Bindings b;
-	LinkedBlockingDeque<Long> runtimes;
+	final LinkedBlockingDeque<Long> runtimes;
 
-	public ScriptBase(final String name, final BufferedReader scriptsrc) {
+	public ScriptBase(final String name, final Reader src) {
 		if (engine == null) {
 			engine = new RhinoScriptEngine();
+			//engine.setContext(ContextFactory.getGlobal().);
 		}
 		this.name = name;
 		// TODO restore bindings from file on startup
 		this.b = new SimpleBindings();
 		this.runtimes = new LinkedBlockingDeque<Long>(50);
+		boolean timeout_found = false;
 		try {
-			log.finer("Compiling script " + name);
-			scriptsrc.mark(4 * 1024);
-			timeout = getTimeoutForScript(scriptsrc, 10000);
+			final BufferedReader scriptsrc = new BufferedReader(src, 8*1024);
+			source = new StringBuilder(2048);
+			while (true) {
+				String line = scriptsrc.readLine();
+				if (line == null) break;
+				if (!timeout_found) {
+					Matcher m = ptrn.matcher(line.trim());
+					if (m.find()) {
+						timeout = Integer.parseInt(m.group(1));
+						timeout_found = true;
+					}
+					m = notimeout.matcher(line.trim());
+					if (m.find()) {
+						timeout = 0;
+						timeout_found = true;
+					}
+				}
+				if (!line.startsWith("//")) source.append(line + "\n");
+			}
+			//log.finer("Compiling script " + name);
+			//scriptsrc.mark(8 * 1024);
+			//timeout = getTimeoutForScript(scriptsrc, 10000);
 			log.finest("Timeout is " + timeout + "ms");
-			scriptsrc.reset();
-			csc = engine.compile(scriptsrc);
+			//scriptsrc.reset();
+			//csc = engine.compile(scriptsrc);
 		} catch (Exception e) {
+			System.err.println(name);
 			e.printStackTrace();
 		}
-	}
-
-	private int getTimeoutForScript(final Reader reader, final int deftimeout) throws IOException {
-		BufferedReader br = new BufferedReader(reader);
-		String line;
-		int tmo = deftimeout;
-		while ((line = br.readLine()) != null) {
-			Matcher m = ptrn.matcher(line.trim());
-			if (m.matches()) {
-				tmo = Integer.parseInt(m.group(1));
-				break;
-			}
-			m = notimeout.matcher(line.trim());
-			if (m.matches()) {
-				tmo = 0;
-				break;
-			}
-		}
-		return tmo;
 	}
 
 	public long getLastRun() {
 		return lastRun;
 	}
 
-	public int getTimeout() {
+	public long getTimeout() {
 		return timeout;
 	}
 
@@ -129,18 +134,26 @@ public abstract class ScriptBase {
 							 final String channel,
 							 final String cmd,
 							 final String param) {
+		return runScript(API,
+				new ScriptInvokerParameters(sender, login, hostname, message, channel, cmd, param));
+	}
+
+	public boolean runScript(final ScriptAPI API, final ScriptInvokerParameters params) {
+		if (source == null || source.length() <= 10) {
+			return false;
+		}
 		log.entering("com.popodeus.chat.ScriptBase", "runScript (" + name + ")", new Object[]{
-				sender, channel, cmd, param
+				params.sender, params.channel, params.cmd, params.param
 		});
 		try {
 			//b.clear();
-			b.put(SCRIPTVAR_NICK, sender);
-			b.put(SCRIPTVAR_CHANNEL, channel);
-			b.put(SCRIPTVAR_IDENT, login);
-			b.put(SCRIPTVAR_HOST, hostname);
-			b.put(SCRIPTVAR_MESSAGE, message);
-			b.put(SCRIPTVAR_COMMAND, cmd);
-			b.put(SCRIPTVAR_PARAM, param);
+			b.put(SCRIPTVAR_NICK, params.sender);
+			b.put(SCRIPTVAR_CHANNEL, params.channel);
+			b.put(SCRIPTVAR_IDENT, params.login);
+			b.put(SCRIPTVAR_HOST, params.hostname);
+			b.put(SCRIPTVAR_MESSAGE, params.message);
+			b.put(SCRIPTVAR_COMMAND, params.cmd);
+			b.put(SCRIPTVAR_PARAM, params.param);
 			b.put(SCRIPTVAR_API, API);
 			//b.put(SCRIPTVAR_LAST_RESULT, last_result);
 			b.put(SCRIPTVAR_RESULT, new Object());
@@ -152,7 +165,15 @@ public abstract class ScriptBase {
 
 			log.finest("evaluating " + name + "...");
 			long nano = System.nanoTime();
-			log.finest("retval: " + csc.eval(b));
+
+			// Evalute the script here
+			// TODO add a way to stop the evaluation if it takes too long
+			//Context ctx = Context.enter();
+			//Object retval = csc.eval(b);
+			Object retval = engine.eval(source.toString(), b);
+			log.finest("retval: " + retval);
+			//Context.exit();
+			//
 			nano = System.nanoTime() - nano;
 			log.finer(name + " runtime: " + nano + "ns");
 			if (runtimes.remainingCapacity() == 0) {
@@ -161,8 +182,8 @@ public abstract class ScriptBase {
 			runtimes.offerLast(nano);
 			lastRun = System.currentTimeMillis();
 
-			Object response_to = b.get(SCRIPTVAR_RESPONSE_TO);
-			Object response = b.get(SCRIPTVAR_RESPONSE);
+			final Object response_to = b.get(SCRIPTVAR_RESPONSE_TO);
+			final Object response = b.get(SCRIPTVAR_RESPONSE);
 			log.finer("\nResponse_to: " + response_to + "\nResponse: " + response);
 			if (null != response && null != response_to) {
 				String to = response_to.toString();
@@ -180,8 +201,10 @@ public abstract class ScriptBase {
 			if (b.get(SCRIPTVAR_NO_TIMEOUT) != null) {
 				return true;
 			}
-		} catch (ScriptException e) {
-			log.log(Level.SEVERE, e.getMessage(), e);
+		} catch (RhinoException re) {
+			log.log(Level.SEVERE, name + ": " + re.toString());
+		} catch (Exception e) {
+			log.log(Level.SEVERE, name + ": " + e.getMessage(), e);
 		}
 		return false;
 	}
