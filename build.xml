@@ -24,6 +24,9 @@
 		<jar compress="true"
 			 destfile="dist/MsLuvaLuva-mini.jar">
 
+			<manifest>
+				<attribute name="Main-Class" value="com.popodeus.chat.MsLuvaLuva" />
+			</manifest>
 			<fileset dir="bin/">
 				<include name="**/*.class"/>
 				<include name="scripts/"/>
