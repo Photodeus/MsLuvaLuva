@@ -1,19 +1,16 @@
 package com.popodeus.chat;
 
 import com.sun.script.javascript.RhinoScriptEngine;
-import com.popodeus.chat.scriptsystem.SandboxContextFactory;
 
-import javax.script.*;
-import java.util.regex.Pattern;
-import java.util.regex.Matcher;
-import java.util.logging.Logger;
-import java.util.logging.Level;
-import java.util.concurrent.LinkedBlockingDeque;
+import javax.script.Bindings;
+import javax.script.SimpleBindings;
 import java.io.BufferedReader;
 import java.io.Reader;
-
-import sun.org.mozilla.javascript.internal.RhinoException;
-//import sun.org.mozilla.javascript.internal.ContextFactory;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * photodeus
@@ -201,8 +198,6 @@ public abstract class ScriptBase {
 			if (b.get(SCRIPTVAR_NO_TIMEOUT) != null) {
 				return true;
 			}
-		} catch (RhinoException re) {
-			log.log(Level.SEVERE, name + ": " + re.toString());
 		} catch (Exception e) {
 			log.log(Level.SEVERE, name + ": " + e.getMessage(), e);
 		}
