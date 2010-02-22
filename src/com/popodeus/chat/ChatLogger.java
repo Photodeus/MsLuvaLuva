@@ -6,6 +6,7 @@ import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.*;
+import java.util.logging.Logger;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 
@@ -90,46 +91,48 @@ public class ChatLogger {
 			final File logfile = getLogFile(channel);
 			String line = null;
 			try {
-				ReverseFileReader rfr = new ReverseFileReader(logfile);
-				int readlines = 0;
-				do {
-					line = rfr.readLine();
-					if (line == null) {
-						break;
-					}
-					if (line.startsWith("--- ")) {
-						continue;
-					}
-					String[] p = line.split(" ", 3);
-					if (p.length == 3) {
-						ChatLine chatline = null;
-						long ts = Long.parseLong(p[0]);
-						// p[1] is just [HH:mm:ss], skip it
-						if (p[2].startsWith("<")) {
-							final int nickend = p[2].indexOf(">");
-							String nick = p[2].substring(1, nickend);
-							chatline = new ChatLine(ts, nick, p[2].substring(nickend + 2));
-							touch(nick, ts);
-						} else if (p[2].startsWith("-!- ")) {
-							chatline = new ActionLine(ts, line);
-							String nick = p[2].substring(5, line.indexOf(" ", 6));
-							touch(nick, ts);
-						} else if (p[2].startsWith("* ")) {
-							chatline = new ActionLine(ts, line);
-							String nick = p[2].substring(3, line.indexOf(" ", 3));
-							touch(nick, ts);
+				if (logfile.exists()) {
+					ReverseFileReader rfr = new ReverseFileReader(logfile);
+					int readlines = 0;
+					do {
+						line = rfr.readLine();
+						if (line == null) {
+							break;
 						}
-						if (lastlogDay < 0) {
-							Calendar cal = new GregorianCalendar();
-							cal.setTimeInMillis(ts);
-							lastlogDay = cal.get(Calendar.DAY_OF_MONTH);
+						if (line.startsWith("--- ")) {
+							continue;
 						}
-						if (chatline != null) {
-							this.lines.offerLast(chatline);
+						String[] p = line.split(" ", 3);
+						if (p.length == 3) {
+							ChatLine chatline = null;
+							long ts = Long.parseLong(p[0]);
+							// p[1] is just [HH:mm:ss], skip it
+							if (p[2].startsWith("<")) {
+								final int nickend = p[2].indexOf(">");
+								String nick = p[2].substring(1, nickend);
+								chatline = new ChatLine(ts, nick, p[2].substring(nickend + 2));
+								touch(nick, ts);
+							} else if (p[2].startsWith("-!- ")) {
+								chatline = new ActionLine(ts, line);
+								String nick = p[2].substring(5, line.indexOf(" ", 6));
+								touch(nick, ts);
+							} else if (p[2].startsWith("* ")) {
+								chatline = new ActionLine(ts, line);
+								String nick = p[2].substring(3, line.indexOf(" ", 3));
+								touch(nick, ts);
+							}
+							if (lastlogDay < 0) {
+								Calendar cal = new GregorianCalendar();
+								cal.setTimeInMillis(ts);
+								lastlogDay = cal.get(Calendar.DAY_OF_MONTH);
+							}
+							if (chatline != null) {
+								this.lines.offerLast(chatline);
+							}
 						}
-					}
-				} while (++readlines < BACKLINES);
-				rfr.close();
+					} while (++readlines < BACKLINES);
+					rfr.close();
+				}
 			} catch (Exception e) {
 				System.err.println((line != null ? line + ": " : "") + e);
 			}
@@ -217,7 +220,7 @@ public class ChatLogger {
 	protected ChatLogger() { }
 
 	public ChatLogger(final File logdir) {
-		System.out.println(new Date() + " New ChatLogger logging into " + logdir.toString());
+		Logger.getLogger(getClass().getName()).info("New ChatLogger logging into " + logdir.toString());
 		this.logdir = logdir;
 		this.channels = new ConcurrentHashMap<String, ChannelLog>(5);
 	}
@@ -239,12 +242,18 @@ public class ChatLogger {
 			e.printStackTrace();
 		}
 	}
+	
+	public boolean hasJoined(final String channel) {
+		return channels.containsKey(channel.toLowerCase());
+	}
 
 	public synchronized void leaveChannel(final String _channel) {
-		ChannelLog log = channels.get(_channel.toLowerCase());
+		final String key = _channel.toLowerCase();
+		ChannelLog log = channels.get(key);
 		if (log != null) {
-			System.out.println("--- " + new Date() + " Closing " + _channel + " log");
+			//System.out.println("--- " + new Date() + " Closing " + _channel + " log");
 			log.close();
+			channels.remove(key);
 		}
 	}
 
@@ -318,7 +327,7 @@ public class ChatLogger {
 	 * Closes all open logs
 	 */
 	public void closeAll() {
-		System.out.println(new Date() + " ChatLogger.closeAll");
+		//System.out.println(new Date() + " ChatLogger.closeAll");
 		for (ChannelLog log : channels.values()) {
 			log.close();
 		}
@@ -410,7 +419,7 @@ public class ChatLogger {
 		final Iterator<ChatLine> it = log.lines.iterator();
 		while (it.hasNext()) {
 			ChatLine line = it.next();
-			System.out.println(line);
+			//System.out.println(line);
 			long linetime = line.timestamp;
 			long delta = (now - linetime) / (60 * 1000);
 			if (delta > maxdelta) {
