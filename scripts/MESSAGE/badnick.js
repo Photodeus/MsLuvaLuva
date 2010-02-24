@@ -10,7 +10,7 @@ var BOLD = String.fromCharCode(2);
 var lnick = "" + nick.toLowerCase();
 
 // Provide data for the !stalk command
-API.setValue("seen." + lnick + ".time", Math.floor(new Date().getTime() / 1000));
+API.setValue("seen." + lnick + ".time", parseInt(new Date().getTime() / 1000));
 API.setValue("seen." + lnick + ".msg", message);
 
 if (lnick == 'bot' || lnick == 'msluvaluva') {
