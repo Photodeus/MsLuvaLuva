@@ -23,11 +23,20 @@ if (isBad) {
 	API.notice(nick, "Welcome " + nick +"! Your nickname seems to be improperly written and needs to be fixed if you wish to remain in chat. " +
 					 "To change your nickname, please write " + BOLD + "/nick FirstnameLastname" + BOLD);
 	API.notice(nick,  "Channel rule is that you "+BOLD+"must"+BOLD+" use your "+BOLD+"Popmundo"+BOLD+" name. " + 
-					example + " Only A-Z allowed. No spaces, no accents. If in doubt, ask the operators for help. Thanks and have a good chat! :)");
-	/*
-	API.say(channel, "Welcome Mibbit user! Your nickname seems to be improper and needs to be fixed.");
-	API.say(channel, "To change your nickname, please write " + BOLD + "/nick FirstnameLastname" + BOLD +
-					 " Channel rule is that you "+BOLD+"must"+BOLD+" use your Popmundo name. " + example +
-					" Only A-Z and a-z allowed. No spaces :)");
-	*/
+					example + " Only A-Z allowed. No spaces, no accents. If in doubt, ask the operators for help. Thanks and enjoy chat! :)");
+} else {
+	var gone = API.getValue("seen." + lnick + ".quit.time");
+	var now = parseInt(new Date().getTime()/1000);
+	// If was gpne more than 30 seconds
+	if (gone && now - gone > 30) {
+		var nums = API.getLineCounts(channel, [5, 15, 60]);
+		var s = "Average number of lines said in the last ";
+		while (nums.hasNext()) {
+			var e = nums.next();
+			var ratio = Math.round(e.getValue() / e.getKey()*100)/100;
+			s += e.getKey() + "min => " + ratio + ", ";
+		}
+		s = s.substring(0, s.lastIndexOf(","));
+		API.notice(nick, s);
+	}
 }
