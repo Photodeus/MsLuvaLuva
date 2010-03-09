@@ -3,6 +3,7 @@ package com.popodeus.chat;
 import com.sun.script.javascript.RhinoScriptEngine;
 
 import javax.script.Bindings;
+import javax.script.CompiledScript;
 import javax.script.SimpleBindings;
 import java.io.BufferedReader;
 import java.io.Reader;
@@ -39,7 +40,7 @@ public abstract class ScriptBase {
 	private Pattern notimeout = Pattern.compile(".*@notimeout.*");
 	private static RhinoScriptEngine engine;
 	private static long DEFAULT_TIMEOUT = 10 * 1000L; // milliseconds
-	//private CompiledScript csc;
+	private CompiledScript csc;
 	protected Logger log = Logger.getLogger("com.popodeus.chat.ScriptBase");
 	private long lastRun;
 	private long timeout = DEFAULT_TIMEOUT;
@@ -83,7 +84,7 @@ public abstract class ScriptBase {
 			//timeout = getTimeoutForScript(scriptsrc, 10000);
 			log.finest("Timeout is " + timeout + "ms");
 			//scriptsrc.reset();
-			//csc = engine.compile(scriptsrc);
+			csc = engine.compile(source.toString());
 		} catch (Exception e) {
 			System.err.println(name);
 			e.printStackTrace();
@@ -166,8 +167,8 @@ public abstract class ScriptBase {
 			// Evalute the script here
 			// TODO add a way to stop the evaluation if it takes too long
 			//Context ctx = Context.enter();
-			//Object retval = csc.eval(b);
-			Object retval = engine.eval(source.toString(), b);
+			Object retval = csc.eval(b);
+			//Object retval = engine.eval(source.toString(), b);
 			log.finest("retval: " + retval);
 			//Context.exit();
 			//
@@ -200,6 +201,8 @@ public abstract class ScriptBase {
 			}
 		} catch (Exception e) {
 			log.log(Level.SEVERE, name + ": " + e.getMessage(), e);
+			//System.err.println(e);
+			//e.printStackTrace();
 		}
 		return false;
 	}
