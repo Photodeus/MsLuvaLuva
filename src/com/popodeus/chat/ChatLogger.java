@@ -1,22 +1,25 @@
 package com.popodeus.chat;
 
 import java.io.*;
-import java.util.concurrent.LinkedBlockingDeque;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.*;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.*;
+import java.util.concurrent.LinkedBlockingDeque;
 import java.util.logging.Logger;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
+import java.util.logging.Level;
 
 /**
  * photodeus
  * Sep 2, 2009
  * 10:01:11 PM
  */
-public class ChatLogger {
+public final class ChatLogger {
 
+	final Logger logger = Logger.getLogger(ChatLogger.class.getName());
+	
 	final DateFormat dateformat = new SimpleDateFormat("HH:mm:ss");
 	private static final int MAX_SCAN_LINES = 600;
 	private File logdir;
@@ -92,6 +95,7 @@ public class ChatLogger {
 			String line = null;
 			try {
 				if (logfile.exists()) {
+					logger.info("Opening log file: " + logfile);
 					ReverseFileReader rfr = new ReverseFileReader(logfile);
 					int readlines = 0;
 					do {
@@ -132,12 +136,19 @@ public class ChatLogger {
 						}
 					} while (++readlines < BACKLINES);
 					rfr.close();
+					logger.fine("Read back " + readlines);
 				}
 			} catch (Exception e) {
-				System.err.println((line != null ? line + ": " : "") + e);
+				logger.severe((line != null ? line + ": " : "") + e);
 			}
 
-			this.writer = new BufferedWriter(new FileWriter(logfile, true), 1024);
+			if (logfile.exists()) {
+				logger.info("Appending to log file: " + logfile);
+				this.writer = new BufferedWriter(new FileWriter(logfile, true), 1024);
+			} else {
+				logger.info("Writing to new log file: " + logfile);
+				this.writer = new BufferedWriter(new FileWriter(logfile), 1024);
+			}
 		}
 
 		private File getLogFile(final String channel) {
@@ -151,41 +162,40 @@ public class ChatLogger {
 				writer.newLine();
 				writer.flush();
 				writer.close();
-			} catch (IOException e) {
-				e.printStackTrace();
+			} catch (Exception e) {
+				logger.log(Level.SEVERE, e.toString(), e);
 			}
 		}
 
 		public void log(final String nick, final String line) {
 			try {
-				final ChatLine chatline = new ChatLine(nick, line);
-				addit(chatline);
+				addit(new ChatLine(nick, line));
 				touch(nick);
-			} catch (IOException e) {
-				e.printStackTrace();
+			} catch (Exception e) {
+				logger.log(Level.SEVERE, e.toString(), e);
 			}
 		}
 
 		public void logAction(final String line) {
 			try {
-				ActionLine action = new ActionLine(line);
-				addit(action);
-			} catch (IOException e) {
-				e.printStackTrace();
+				addit(new ActionLine(line));
+			} catch (Exception e) {
+				logger.log(Level.SEVERE, e.toString(), e);
 			}
 		}
 
 		private void addit(final ChatLine line) throws IOException {
 			if (lines.remainingCapacity() == 0) {
 				ChatLine out = lines.pollLast();
+				// right now we don't need the line that is removed from the buffer
 			}
 			lines.offerFirst(line);
 			Calendar cal = new GregorianCalendar();
 			cal.setTimeInMillis(line.timestamp);
 			int daynow = cal.get(Calendar.DAY_OF_MONTH);
 			if (daynow != lastlogDay) {
-				lastlogDay = daynow;
 				writer.write("--- Date changed to " + cal.getTime());
+				lastlogDay = daynow;
 			}
 			writer.write(line.toString());
 			writer.newLine();
@@ -198,8 +208,8 @@ public class ChatLogger {
 					lastflush = System.currentTimeMillis();
 					writer.flush();
 				}
-			} catch (IOException e) {
-				e.printStackTrace();
+			} catch (Exception e) {
+				logger.log(Level.SEVERE, e.toString(), e);
 			}
 		}
 
@@ -218,18 +228,23 @@ public class ChatLogger {
 	}
 
 	protected ChatLogger() { }
-
+	
 	public ChatLogger(final File logdir) {
-		Logger.getLogger(getClass().getName()).info("New ChatLogger logging into " + logdir.toString());
+		logger.info("New ChatLogger logging into " + logdir.toString());
+		if (!logdir.exists()) {
+			//throw new IOException("Log output directory " + logdir + " does not exist or is not writable.");
+			logger.severe("Log output directory " + logdir + " does not exist or is not writable.");
+		}
 		this.logdir = logdir;
 		this.channels = new ConcurrentHashMap<String, ChannelLog>(5);
 	}
 
-	public synchronized void joinChannel(final String _channel) {
-		//System.out.println("ChatLogger.joinChannel(" + _channel + ")");
+	public synchronized void joinChannel(final String _channel) throws IllegalStateException {
+		logger.info("Joining channel: " + _channel);
 		String channel = _channel.toLowerCase();
 		if (channels.containsKey(channel)) {
 			ChannelLog tmp = channels.get(channel);
+			logger.info("Closing channel log: " + _channel + " => " + channel);
 			tmp.close();
 		}
 		try {
@@ -239,7 +254,8 @@ public class ChatLogger {
 			log.writer.newLine();
 			log.writer.flush();
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.log(Level.SEVERE, e.toString(), e);
+			throw new IllegalStateException(e);
 		}
 	}
 	
@@ -249,11 +265,12 @@ public class ChatLogger {
 
 	public synchronized void leaveChannel(final String _channel) {
 		final String key = _channel.toLowerCase();
-		ChannelLog log = channels.get(key);
-		if (log != null) {
-			//System.out.println("--- " + new Date() + " Closing " + _channel + " log");
-			log.close();
+		ChannelLog clog = channels.get(key);
+		if (clog != null) {
+			logger.info("Leaving: " + _channel + " and closing writer.");
+			clog.close();
 			channels.remove(key);
+			logger.info("channels.size(): " + channels.size());
 		}
 	}
 
@@ -271,17 +288,17 @@ public class ChatLogger {
 
 	public void log(final String channel, String nick, String line, boolean flush) {
 		if (channel == null) {
-			for (ChannelLog log : channels.values()) {
-				log.log(nick, line);
+			for (ChannelLog logga : channels.values()) {
+				logga.log(nick, line);
 				if (flush) {
-					log.flush();
+					logga.flush();
 				}
 			}
 		} else {
 			ChannelLog output = channels.get(channel.toLowerCase());
 			if (output == null) {
-				System.err.println("Failed to log to " + channel + ". Not opened: " + line);
-				System.err.println("Logs that are open: " + channels.keySet());
+				logger.warning("Failed to log to " + channel + ". Not opened: " + line);
+				logger.warning("Logs that are open: " + channels.keySet());
 			} else {
 				output.log(nick, line);
 				if (flush) {
@@ -317,8 +334,8 @@ public class ChatLogger {
 					output.touch(nick);
 				}
 			} else {
-				System.err.println("Failed to log action to " + channel + ". Not opened: " + line);
-				System.err.println("Logs that are open: " + channels.keySet());
+				logger.warning("Channel " + channel + " log not opened: " + line);
+				logger.finer("Logs that are open: " + channels.keySet());
 			}
 		}
 	}
@@ -327,9 +344,9 @@ public class ChatLogger {
 	 * Closes all open logs
 	 */
 	public void closeAll() {
-		//System.out.println(new Date() + " ChatLogger.closeAll");
-		for (ChannelLog log : channels.values()) {
-			log.close();
+		logger.info("Closing all channel logs: channels.size(): " + channels.size());
+		for (ChannelLog clog : channels.values()) {
+			clog.close();
 		}
 		channels.clear();
 	}
@@ -341,10 +358,10 @@ public class ChatLogger {
 	}
 
 	public ChatLine getLastLine(final String channel) {
-		ChannelLog log = channels.get(channel.toLowerCase());
+		ChannelLog clog = channels.get(channel.toLowerCase());
 		ChatLine retval = null;
-		if (log != null) {
-			retval = log.lines.peek();
+		if (clog != null) {
+			retval = clog.lines.peek();
 		}
 		return retval;
 	}
@@ -519,17 +536,22 @@ public class ChatLogger {
 	}
 
 	public static void main(String[] args) {
-		File logdir = new File("/tmp/luva");
-		ChatLogger c = new ChatLogger(logdir);
-		c.joinChannel("#Popmundo");
+		File logdir = new File("/tmp/chatlog.log");
+		try {
+			ChatLogger c = new ChatLogger(logdir);
+			c.joinChannel("#Popmundo");
+			System.out.println("============================");
+			System.out.println(c.getLastActivity("#Popmundo", "TestUser"));
 
-		System.out.println("============================");
-		System.out.println(c.getLastActivity("#Popmundo", "AlanasANikonis"));
-
-		System.out.println(c.getLineCounts("#Popmundo",
-				5, 10, 30));
-
-		c.closeAll();
+			Iterator<Map.Entry<Integer,Integer>> it = c.getLineCounts("#Popmundo", 5, 10, 30);
+			while (it.hasNext()) {
+				Map.Entry entry = it.next();
+				System.out.println(entry.getKey() + ": " + entry.getValue());
+			}
+			c.closeAll();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 
 	}
 }
