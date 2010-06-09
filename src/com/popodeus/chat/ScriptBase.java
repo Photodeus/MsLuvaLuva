@@ -55,7 +55,7 @@ public abstract class ScriptBase {
 			//engine.setContext(ContextFactory.getGlobal().);
 		}
 		this.name = name;
-		// TODO restore bindings from file on startup
+		// TODO restore bindings from file on startup?
 		this.b = new SimpleBindings();
 		this.runtimes = new LinkedBlockingDeque<Long>(50);
 		boolean timeout_found = false;
@@ -69,6 +69,10 @@ public abstract class ScriptBase {
 					Matcher m = ptrn.matcher(line.trim());
 					if (m.find()) {
 						timeout = Integer.parseInt(m.group(1));
+						// Timeout inside scripts is written as seconds, and needs
+						// to be converted into millis
+						if (timeout < 120) timeout *= 1000;
+						if (timeout < 0) timeout = DEFAULT_TIMEOUT;
 						timeout_found = true;
 					}
 					m = notimeout.matcher(line.trim());
