@@ -7,7 +7,6 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.gargoylesoftware.htmlunit.xml.XmlPage;
 import org.jibble.pircbot.User;
 import org.w3c.dom.Element;
-import sun.org.mozilla.javascript.internal.Scriptable;
 
 import javax.script.Bindings;
 import javax.script.SimpleBindings;
@@ -36,7 +35,6 @@ public class ScriptManager {
 	private final Map<Event, List<EventScript>> eventscriptcache;
 	private final Bindings globalBindings;
 
-	public Scriptable last_result;
 	private BotCallbackAPI bot;
 	private ChatLogger logger;
 	private int DEFAULT_IGNORE_TIME = 10 * 60; // 10 hours
