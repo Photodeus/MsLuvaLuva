@@ -1,25 +1,24 @@
 package com.popodeus.chat;
 
-import com.gargoylesoftware.htmlunit.*;
-import com.gargoylesoftware.htmlunit.xml.XmlPage;
+import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.html.DomElement;
-import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.gargoylesoftware.htmlunit.html.HtmlElement;
+import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import com.gargoylesoftware.htmlunit.xml.XmlPage;
+import org.jibble.pircbot.User;
+import org.w3c.dom.Element;
+import sun.org.mozilla.javascript.internal.Scriptable;
 
 import javax.script.Bindings;
 import javax.script.SimpleBindings;
-import java.util.*;
-import java.util.logging.Logger;
-import java.util.logging.Level;
-import java.util.logging.LogManager;
 import java.io.*;
 import java.net.URLEncoder;
-import java.text.NumberFormat;
 import java.text.DecimalFormat;
-
-import sun.org.mozilla.javascript.internal.Scriptable;
-import org.jibble.pircbot.User;
-import org.w3c.dom.Element;
+import java.text.NumberFormat;
+import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.LogManager;
+import java.util.logging.Logger;
 
 /**
  * Loads and runs scripts that act as commands
@@ -276,7 +275,7 @@ public class ScriptManager {
 		if (triggerScript != null) {
 			log.finer("triggerScript.hasTimeoutPassed: " + triggerScript.hasTimeoutPassed());
 			if (!triggerScript.hasTimeoutPassed()) {
-				String timeoutmsg = "Too fast - Timeout is " + (triggerScript.getTimeout() / 1000) + "s. Try again later.";
+				final String timeoutmsg = "Too fast - Timeout is " + Math.round(triggerScript.getTimeout() / 100) / 10 + "s. Try again later.";
 				bot.notice(sender, timeoutmsg);
 			} else {
 				return triggerScript.runScript(getAPI(triggerScript), sender, login, hostname, message,
