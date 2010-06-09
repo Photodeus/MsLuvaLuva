@@ -5,10 +5,9 @@ import com.gargoylesoftware.htmlunit.html.DomElement;
 import org.jibble.pircbot.User;
 import org.w3c.dom.Element;
 
-import java.util.List;
-import java.util.SortedMap;
-import java.util.Map;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 
 /**
@@ -104,15 +103,15 @@ v	 */
 	List getElementsByAttribute(final Element parent, String tagname, String attribute, String value);
 
 	/**
-	 * Check the timeout in seconds that is active on this script.
+	 * Check the timeout in millisseconds for a script.
 	 * If no specific timeout has been set, some sensible default value will
 	 * be returned
-	 * @param script Script name, for example "who", "stalk" or "ud"
+	 * @param script Script command name, for example "who", "stalk" or "ud"
 	 */
 	long getTimeout(String script);
 
 	/**
-	 * Sets timeout in seconds for a script, for example "ud"
+	 * Sets timeout in milliseconds for a script, for example "ud"
 	 * @param script The name of the script, if the command is !stalk, pass in the string "stalk"
 	 * @param timeout Time in seconds. Do not use values under 1 and values that are too large.
 	 */
