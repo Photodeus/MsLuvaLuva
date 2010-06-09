@@ -1,3 +1,4 @@
+<?xml version="1.0" ?>
 <project name="MsLuvaLuva IRC bot" default="compile" basedir=".">
 
 	<property file="build.properties"/>
@@ -6,6 +7,17 @@
 		<fileset dir="${jdk.home}/jre/lib/" includes="**/*.jar"/>
 		<fileset dir="lib/" includes="**/*.jar"/>
 	</path>
+
+	<path id="build-classpath">
+		<fileset dir="lib/">
+			<include name="*.jar"/>
+		</fileset>
+	</path>
+	
+	<manifestclasspath property="jar.classpath" jarfile="dist/${build.jar}" >
+		<classpath refid="build-classpath" />
+	</manifestclasspath>
+
 
 	<target name="compile">
 		<mkdir dir="bin"/>
@@ -20,37 +32,43 @@
 
 	<target name="jar" depends="compile">
 		<mkdir dir="dist/"/>
-		
+		<delete file="dist/${build.jar}" />
+
 		<jar compress="true"
-			 destfile="dist/MsLuvaLuva-mini.jar">
+			 update="false"
+			 destfile="dist/${build.jar}">
 
 			<manifest>
-				<attribute name="Main-Class" value="com.popodeus.chat.MsLuvaLuva" />
+				<attribute name="Main-Class" value="com.popodeus.chat.MsLuvaLuva"/>
+				<attribute name="Class-Path" value=". ${jar.classpath}"/>
 			</manifest>
+
+			<zipfileset dir="lib/" prefix=""/>
 			<fileset dir="bin/">
 				<include name="**/*.class"/>
-				<include name="scripts/"/>
+				<!-- <include name="scripts/"/> -->
 				<exclude name="test/"/>
 			</fileset>
-			
+
 			<fileset dir="src/">
+				<exclude name="logging.properties"/>
 				<include name="*.properties"/>
 			</fileset>
-			
+
 		</jar>
 	</target>
-	
+
 	<target name="test" depends="compile">
 		<javac
 				executable="${jdk.home}/bin/javac"
 				target="1.5"
 				classpathref="classpath"
-				srcdir="src/test/"
-				destdir="bin/" />
-		<junit>
-			<classpath path="bin/;bin/test/;lib/junit-4.7.jar" />
-			<formatter type="brief" usefile="false" />
-			<test name="com.popodeus.chat.ChatLoggerTest" />
+				srcdir="test/"
+				destdir="bin/"/>
+		<junit printsummary="true" failureproperty="junit.failed">
+			<classpath path="bin/" />
+			<formatter type="brief" usefile="false"/>
+			<test name="com.popodeus.chat.ChatLoggerTest"/>
 		</junit>
 	</target>
 
