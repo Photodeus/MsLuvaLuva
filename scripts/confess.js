@@ -8,7 +8,7 @@ if (!c) {
 		var div = API.getElementById(page, "squeeze");
 		if (div) {
 			var list = page.getElementsByAttribute(div, "p", "", "");
-			response = list;
+			response = ""+list.get(0);
 			response_to = channel;
 		}
 	}
