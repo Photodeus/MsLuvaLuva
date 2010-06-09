@@ -1,5 +1,6 @@
 package com.popodeus.chat;
 
+import com.gargoylesoftware.htmlunit.*;
 import org.jibble.pircbot.NickAlreadyInUseException;
 import org.jibble.pircbot.PircBot;
 import org.jibble.pircbot.User;
@@ -7,15 +8,13 @@ import org.jibble.pircbot.User;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.logging.Logger;
 import java.util.logging.Level;
-import java.util.regex.Pattern;
+import java.util.logging.Logger;
 import java.util.regex.Matcher;
-import java.text.MessageFormat;
-
-import com.gargoylesoftware.htmlunit.*;
+import java.util.regex.Pattern;
 
 /**
  * Our own little amusing infobot. Meet MsLuvaLuva!
@@ -81,8 +80,6 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 			setVersion(properties.getString(Config.VERSION_STRING));
 			quitmsg = properties.getString(Config.QUITMSG);
 			rejoinmessageEnabled = Boolean.parseBoolean(properties.getString(Config.REJOINMSG_ENABLED));
-			if (logger != null) logger.closeAll();
-			logger = new ChatLogger(new File(properties.getString(Config.LOG_DIR)));
 
 			String telnet = properties.getString(Config.TELNET_PORT);
 			if (telnet != null) {
@@ -94,6 +91,10 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 					remote = new BotRemote(listenport, this, scriptmanager);
 				}
 			}
+			
+			// Do logger reinit last
+			if (logger != null) logger.closeAll();
+			logger = new ChatLogger(new File(properties.getString(Config.LOG_DIR)));
 		} catch (Error ex) {
 			log.log(Level.SEVERE, ex.getMessage(), ex);
 		} catch (Exception ex) {
@@ -230,9 +231,18 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 	protected void onJoin(final String channel, final String sender, final String login, final String hostname) {
 		//System.out.println("============================================");
 		//System.out.println("ONJOIN : " + channel + " :: " + sender + " ... " + getNick());
-		if (getNick().equalsIgnoreCase(sender)) {
-			logger.joinChannel(channel);
-		} else {
+		final boolean isBotSender = getNick().equalsIgnoreCase(sender);
+		
+		if (isBotSender) {
+			try {
+				logger.joinChannel(channel);
+			} catch (Exception e) {
+				log.warning(e.toString());
+			}
+		} 
+		
+		//if (properties.getString(allow.join.events.bot))
+		if (!isBotSender) {
 			log.fine("onJoin: " + sender + "!" + login +  "@" + hostname + " => " + channel);
 			logger.logAction(channel, sender + " [" + login + "@" + hostname + "] has joined " + channel, sender);
 			scriptmanager.runOnEventScript(this, Event.JOIN, sender, login, hostname, null, channel);
