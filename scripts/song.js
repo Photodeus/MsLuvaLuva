@@ -1,15 +1,19 @@
 // @private
-// @description MsLuvaLuva is really kinky. What is she dreaming of right now?
-// @example !kinky
-// @example !kinky JohnDoe
+// @description MsLuvaLuva is good with making up songs, why don't you ask her what you should compose?
+// @example !song
 /*
-var style = [
-	"wizard hat",
-];
+ var style = [
+ "wizard hat",
+ ];
 
 var tempo = [
-	"tempo",
-];
+ "lento",
+ "adagio",
+ "andante",
+ "moderato",
+ "vivace",
+ "presto",
+ ];
 
 var lines = [
 	"I'm curious about trying out some $level $target-$act with $nick!",
