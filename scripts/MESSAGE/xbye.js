@@ -1,6 +1,6 @@
-var timeout = API.getValue("bye.timeout");
+var bye_timeout;
 var delta = 20000;
-if (timeout) delta = new Date().getTime() - timeout;
+if (bye_timeout) delta = new Date().getTime() - bye_timeout;
 
 if (delta >= 20000) {
 	message = message.toLowerCase();
@@ -14,10 +14,18 @@ if (delta >= 20000) {
 			|| message.indexOf("im gonna be a dad") >= 0
 			|| message.indexOf("i'm gonna be a dad") >= 0
 			|| message.indexOf("i'm gonna be a father") >= 0
+			|| message.indexOf("baby was born") >= 0
+			|| message.indexOf("baby has been born") >= 0
 			) {
-		response = "Congrats " + nick + "! Babies are fun! I loooove babies.";
+		if (message.indexOf("if i'm") < 0) {
+			response = "Congrats " + nick + "! Babies are fun! I loooove babies.";
+			response_to = channel;
+			bye_timeout = new Date().getTime();
+		}
+	} else if (message.indexOf("cheers") >= 0) {
+		response = "Cheers!";
 		response_to = channel;
-		API.setValue("bye.timeout", new Date().getTime());
+		bye_timeout = new Date().getTime();
 	} else if (message.indexOf("popogeddon") >= 0
 			|| message.indexOf("armageddon") >= 0
 			) {
@@ -30,9 +38,10 @@ if (delta >= 20000) {
 		];
 		response = r[Math.floor(Math.random() * r.length)];
 		response_to = channel;
-		API.setValue("bye.timeout", new Date().getTime() + 10000);
+		bye_timeout = new Date().getTime() + 10000;
 	} else if (message.indexOf("i gotta go") >= 0
 			|| message.indexOf("i got to go") >= 0
+			|| message.indexOf("g2g") >= 0
 			|| message.indexOf("bye bye") >= 0
 			|| message.indexOf("im leaving now") >= 0
 			|| message.indexOf("i'm leaving now") >= 0
@@ -44,19 +53,23 @@ if (delta >= 20000) {
 			|| message.indexOf("imma roll") >= 0
 			|| message.indexOf("laters all") >= 0
 			|| message.indexOf("laters every") >= 0
+			|| message.indexOf("i'm off to bed") >= 0
+			|| message.indexOf("im off to bed") >= 0
 			) {
 		u = [
-			"All right, bye then $nick!",
+			"All right then, bye $nick!",
 			"Bye byes $nick!",
 			"Good bye, $nick.",
+			"I wish you'd never have to leave me $nick :(",
 			"Hope to have you come back sometime soon, $nick.",
 			"I'll be here waiting for your return, $nick.",
-			"I'll be waiting for your to come back soon $nick.",
+			"I'll be waiting for you to come back soon $nick.",
 			"Happy to have you here, $nick.",
+			"Was fun while it lasted, $nick!",
 		];
 		response = u[Math.floor(Math.random() * u.length)].replace(/\$nick/, nick);
 		response_to = channel;
-		API.setValue("bye.timeout", new Date().getTime());
+		bye_timeout = new Date().getTime();
 
 	} else if (message.indexOf("brb") >= 0 || message.indexOf("be right back") >= 0) {
 		u = [
@@ -70,12 +83,13 @@ if (delta >= 20000) {
 		];
 		response = u[Math.floor(Math.random() * u.length)].replace(/\$nick/, nick);
 		response_to = channel;
-		API.setValue("bye.timeout", new Date().getTime());
+		bye_timeout = new Date().getTime();
 	} else if (message.indexOf("tasty") >= 0) {
-		response = "Your mom was tasty";
+		response = "Oh yea?! Your mom was tasty!";
 		response_to = channel;
-		API.setValue("bye.timeout", new Date().getTime());
+		bye_timeout = new Date().getTime();
 	} else if (message.indexOf("melvin") >= 0 && message.indexOf("!who") < 0 && message.length > 10) {
+		/*
 		timeout = API.getValue("melvin.timeout");
 		delta = 360000;
 		if (timeout) delta = new Date().getTime() - timeout;
@@ -96,6 +110,7 @@ if (delta >= 20000) {
 			response_to = channel;
 			API.setValue("melvin.timeout", new Date().getTime());
 		}
+		*/
 	}
 } else {
 }
