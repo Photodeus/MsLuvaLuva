@@ -13,7 +13,7 @@ var lnick = "" + nick.toLowerCase();
 API.setValue("seen." + lnick + ".time", parseInt(new Date().getTime() / 1000));
 API.setValue("seen." + lnick + ".msg", message);
 
-if (lnick == 'bot' || lnick == 'msluvaluva') {
+if (lnick == 'bot' || lnick == 'msluvaluva' || lnick == "pottsi") {
 	// Do nothing
 } else {
 	var isBad = lnick.match(/[0-9]|^[A-Z][a-z]+$/) || lnick.length < 4;
@@ -74,10 +74,13 @@ if (lnick == 'bot' || lnick == 'msluvaluva') {
 				var line = w[ Math.floor(Math.random() * w.length) ];
 				//API.say(channel, nick + ", go away since you're already pretending to be away. Or fix your nick <3");
 				API.say(channel, line.replace(/\$nick/, nick));
-			} else if (warning.count == 20) {
-				API.say(channel, nick + ", go away or fix your nickname! NOW!");
 			} else if (warning.count == 30) {
-				API.say(channel, nick + ", go away and stay away!");
+				API.say(channel, nick + ", fix your nickname! NOW!");
+				//API.say(channel, nick + ", go away and stay away!");
+			} else if (warning.count == 40) {
+				API.say(channel, nick + ", fix your nickname! I'm a bot, if you think I'll ever get tired of nagging you are wrong..");
+			} else if (warning.count == 60) {
+				API.say(channel, nick + " must be the stupidest dork ever. \"Oh look, I defy a bot, I am soooo cool\". Lol.");
 			}
 			warnings[nick] = warning;
 		} else {
