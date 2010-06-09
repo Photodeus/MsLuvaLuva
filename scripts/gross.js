@@ -10,7 +10,7 @@ var responses = [
 	"Who turned on the porno channel, can we switch back to discovery channel where they make this stuff sound interesting?",
 	"You know what guys? Sometimes I think you all are a bit too gross.",
 	"You know what guys? Sometimes I think you all are a bit too explicit!",
-	"Wow they never taught us to say that in school. You guys really do know how to say the weirdest shit.",
+	"Wow they never taught us to say that in school. You guys really do know how to say the weirdest shit. Ever.",
 	//	"- Tickle your ass with a feather? Huh? - I asked, \"Particulary nasty weather?\"",
 ];
 
