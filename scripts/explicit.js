@@ -5,11 +5,12 @@ var responses = [
 
 var lnick = nick.toLowerCase();
 API.info("explicit by " + nick);
-var last = API.getValue("explicit." + lnick)
+if (!explicit) explicit = { };
+var last = explicit[lnick];
 if (last && new Date().getTime() - last < 120000) {
 	API.action(nick, "Once is enough, aight?");
 } else {
 	response_to = "#Popmundo";
 	response = responses[Math.floor(Math.random() * responses.length)];
 }
-API.setValue("explicit." + lnick, new Date().getTime())
+explicit[lnick] = new Date().getTime();
