@@ -1,0 +1,23 @@
+Welcome to MsLuvaLuva, a minimal (and incomplete) chat bot with attitude.
+It has a simple scripting system to run commands initiated in the channel or private queries.
+
+To build this project
+* cd /some/good/directory
+* git clone git://github.com/Photodeus/MsLuvaLuva.git
+* cd MsLuvaLuva
+
+edit the src/config.properties file to your liking
+
+Make a package
+* ant jar
+
+Run it
+* java -jar dist/MsLuvaLuva-mini-test.jar
+
+
+This project is hosted at
+http://github.com/Photodeus/MsLuvaLuva
+
+Check out the Wiki
+http://wiki.github.com/Photodeus/MsLuvaLuva/
+
