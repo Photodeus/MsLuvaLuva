@@ -14,11 +14,6 @@
 		</fileset>
 	</path>
 	
-	<manifestclasspath property="jar.classpath" jarfile="dist/${build.jar}" >
-		<classpath refid="build-classpath" />
-	</manifestclasspath>
-
-
 	<target name="compile">
 		<mkdir dir="bin"/>
 
@@ -33,6 +28,10 @@
 	<target name="jar" depends="compile">
 		<mkdir dir="dist/"/>
 		<delete file="dist/${build.jar}" />
+
+		<manifestclasspath property="jar.classpath" jarfile="dist/${build.jar}" >
+			<classpath refid="build-classpath" />
+		</manifestclasspath>
 
 		<jar compress="true"
 			 update="false"
