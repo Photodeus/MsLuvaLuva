@@ -1,17 +1,19 @@
 package com.popodeus.chat;
 
-import sun.org.mozilla.javascript.internal.ScriptableObject;
+import net.sourceforge.htmlunit.corejs.javascript.ScriptableObject;
+import org.jibble.pircbot.User;
 
-import java.net.ServerSocket;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.InetAddress;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
-import java.io.*;
-import java.util.Map;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Logger;
-
-import org.jibble.pircbot.User;
 
 /**
  * photodeus
