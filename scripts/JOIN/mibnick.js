@@ -23,17 +23,18 @@ if (isBad) {
 	API.notice(nick, "Welcome " + nick +"! Your nickname seems to be improperly written and needs to be fixed if you wish to remain in chat. " +
 					 "To change your nickname, please write " + BOLD + "/nick FirstnameLastname" + BOLD);
 	API.notice(nick,  "Channel rule is that you "+BOLD+"must"+BOLD+" use your "+BOLD+"Popmundo"+BOLD+" name. " + 
-					example + " Only A-Z allowed. No spaces, no accents. If in doubt, ask the operators for help. Thanks and enjoy chat! :)");
+					example + " Only A-Z allowed. No spaces, no accents. "+BOLD+"If in doubt, ask the operators for help or use the command !nick"+BOLD+" - Thanks and enjoy chat! :)");
 } else {
 	var gone = API.getValue("seen." + lnick + ".quit.time");
 	var now = parseInt(new Date().getTime()/1000);
-	// If was gpne more than 30 seconds
-	if (gone && now - gone > 30) {
+	// If was gone 60 seconds or more
+	if (gone == null || (gone && now - gone > 60)) {
 		var nums = API.getLineCounts(channel, [5, 15, 60]);
 		var s = "Average number of lines said in the last ";
 		while (nums.hasNext()) {
 			var e = nums.next();
-			var ratio = Math.round(e.getValue() / e.getKey()*100)/100;
+			var val = e.getValue()-1;
+			var ratio = Math.round(val / e.getKey()*100)/100;
 			s += e.getKey() + "min => " + ratio + ", ";
 		}
 		s = s.substring(0, s.lastIndexOf(","));
