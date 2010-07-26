@@ -189,7 +189,7 @@ v	 */
 
 	String getBotNick();
 	void fixBotNick();
-	void setBotNick();
+	void setBotNick(String newnick);
 
 	boolean hasVoice(String channel, String nick);
 	boolean isHalfOp(String channel, String nick);
