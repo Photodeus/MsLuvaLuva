@@ -188,6 +188,8 @@ v	 */
 	long getLastRun();
 
 	String getBotNick();
+	void fixBotNick();
+	void setBotNick();
 
 	boolean hasVoice(String channel, String nick);
 	boolean isHalfOp(String channel, String nick);
