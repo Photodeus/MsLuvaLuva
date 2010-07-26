@@ -451,7 +451,7 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 			if (special) {
 
 			} else {
-				if (!hasVoice(channel, getNick())) {
+				if (!hasVoice(channel, getNick()) || !isOp(channel, getNick()) || !isHalfOp(channel, getNick())) {
 					sendNotice(sender, MessageFormat.format(messages.getString("without.a.voice"), getNick(), message));
 					return;
 				}
@@ -679,6 +679,17 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 		return retval;
 	}
 
+	public void setBotNick(final String newnick) {
+		super.changeNick(newnick);
+	}
+
+	public String getDefaultNick() {
+		return properties.getString(Config.NICK);
+	}
+	public String getAltNick() {
+		return properties.getString(Config.ALTNICK);
+	}
+	
 	public ResourceBundle getMessges() {
 		return messages;
 	}
