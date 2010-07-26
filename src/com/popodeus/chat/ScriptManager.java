@@ -586,6 +586,17 @@ public class ScriptManager {
 				return bot.getNick();
 			}
 
+			public void fixBotNick() {
+				if (!bot.getNick().equals(bot.getDefaultNick())) {
+					bot.setBotNick(bot.getAltNick());
+				}
+			}
+
+			public void setBotNick(String newnick) {
+				// TODO needs access control
+				// bot.setBotNick(newnick);
+			}
+
 			public boolean hasVoice(final String channel, final String nick) {
 				return bot.hasVoice(channel, nick);
 			}
