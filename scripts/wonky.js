@@ -1,5 +1,5 @@
 // @description MsLuvaLuva is feeling really wonky in her pants. What is she dreaming of right now?
-// @example !kinky
+// @example !wonky
 
 var words = [
 	"eyeball",
