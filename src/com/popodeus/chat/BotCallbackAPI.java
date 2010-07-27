@@ -69,6 +69,9 @@ public interface BotCallbackAPI {
 	 * The current nick of the bot
 	 */
 	String getNick();
+	String getDefaultNick();
+	String getAltNick();
+	void setBotNick(String newnick);
 
 	boolean hasVoice(final String channel, final String nick);
 
