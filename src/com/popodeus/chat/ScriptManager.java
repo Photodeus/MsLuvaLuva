@@ -333,6 +333,7 @@ public class ScriptManager {
 				return addIgnore(nick, ident, host, DEFAULT_IGNORE_TIME);
 			}
 
+			// TODO the time parameter is ignored
 			public boolean addIgnore(final String nick, final String ident, final String host, final int minutes) {
 				if (nick != null) {
 					ignoredNicks.add(normalize(nick));
