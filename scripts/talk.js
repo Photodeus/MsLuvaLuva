@@ -1,7 +1,7 @@
 // @private
-if (API.isOwner(channel, nick) || API.isAdmin(channel, nick) || API.isOwner(channel, nick)) {
-	var tmp = param.match(/(\#[a-zA-Z]+)\s(.+)/);
-	if (tmp) {
+var tmp = param.match(/(\#?[a-zA-Z]+)\s(.+)/);
+if (tmp) {
+	if (API.isOwner(tmp[1], nick) || API.isOp(tmp[1], nick) || nick == "AlmaDD" || nick == "AlmaDavidsson") {
 		API.say(tmp[1], tmp[2]);
 	}
 }

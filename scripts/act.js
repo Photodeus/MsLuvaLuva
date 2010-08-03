@@ -1,6 +1,6 @@
 // @private
-if (API.isOwner(channel, nick) || API.isAdmin(channel, nick)) {
-	var tmp = param.match(/(\#[a-zA-Z]+)\s(.+)/);
+var tmp = param.match(/(\#[a-zA-Z]+)\s(.+)/);
+if (API.isOwner(tmp[1], nick) || API.isAdmin(tmp[1], nick)) {
 	if (tmp) {
 		API.action(tmp[1], tmp[2]);
 	}
