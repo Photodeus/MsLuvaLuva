@@ -102,8 +102,6 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 		}
 	}
 
-
-	@Override
 	public void run() {
 		boolean keeprunning = true;
 		if (keeprunning && do_connect()) {
@@ -127,11 +125,11 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 	@Override
 	protected void onDisconnect() {
 		log.info(messages.getString("was.disconnected"));
-		logger.logAction(null, messages.getString("disconnected.from.server"), null);
+		logger.logAction(null, null, messages.getString("disconnected.from.server"));
 		int counter = 500;
 		while (!isConnected()) {
 			log.info(new Date() + " attempting reconnect");
-			logger.logAction(null, MessageFormat.format(messages.getString("attempting.to.connect.to.server"), counter), null, true);
+			logger.logAction(null, null, MessageFormat.format(messages.getString("attempting.to.connect.to.server"), counter), true);
 			if (do_connect()) {
 				if (rejoinmessageEnabled) {
 					String rejoinmsg = properties.getString(Config.REJOINMSG);
@@ -214,7 +212,7 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 		for (User u : users) {
 			line.append(u.toString() + ", ");
 		}
-		logger.logAction(channel, "User list for " + channel + ": " + line.toString(), null);
+		logger.logAction(channel, null, "User list for " + channel + ": " + line.toString());
 		/*
 		Set<User> u = new TreeSet<User>();
 		u.addAll(Arrays.asList(users));
@@ -244,7 +242,7 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 		//if (properties.getString(allow.join.events.bot))
 		if (!isBotSender) {
 			log.fine("onJoin: " + sender + "!" + login +  "@" + hostname + " => " + channel);
-			logger.logAction(channel, sender + " [" + login + "@" + hostname + "] has joined " + channel, sender);
+			logger.logAction(channel, sender, sender + " [" + login + "@" + hostname + "] has joined " + channel);
 			scriptmanager.runOnEventScript(this, Event.JOIN, sender, login, hostname, null, channel);
 		}
 	}
@@ -265,12 +263,12 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 	}
 
 	public void channelBan(final String channel, final String hostmask) {
-		logger.logAction(channel, "Trying to set ban on host " + hostmask, null, true);
+		logger.logAction(channel, null, "Trying to set ban on host " + hostmask, true);
 		ban(channel, hostmask);
 	}
 
 	public void channelUnban(final String channel, final String hostmask) {
-		logger.logAction(channel, "Trying to remove ban from host " + hostmask, null, true);
+		logger.logAction(channel, null, "Trying to remove ban from host " + hostmask, true);
 		unBan(channel, hostmask);
 	}
 
@@ -279,7 +277,7 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 	 * Might not work unless bot is op
 	 */
 	public void invite(final String nick, final String channel) {
-		logger.logAction(channel, "Inviting " + nick, nick);
+		logger.logAction(channel, null, "Inviting " + nick);
 		sendInvite(nick, channel);
 	}
 
@@ -308,7 +306,7 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 		log.info(oldNick + " is now known as " + newNick);
 		for (String channel : getChannels()) {
 			if (isNickInChannel(channel, oldNick) || isNickInChannel(channel,  newNick)) {
-				logger.logAction(null, oldNick + " is now known as " + newNick, oldNick, true);
+				logger.logAction(null, oldNick, oldNick + " is now known as " + newNick, true);
 				logger.nickChange(oldNick, newNick);
 			}
 		}
@@ -329,7 +327,7 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 	@Override
 	protected void onMode(final String channel, final String sourceNick, final String sourceLogin, final String sourceHostname, final String mode) {
 		log.info(sourceNick + "!" + sourceLogin + "@" + sourceHostname + " ==> " + channel + " " + mode);
-		logger.logAction(channel, "mode/"+channel + " [" + mode + " " + sourceNick + "]", sourceNick);
+		logger.logAction(channel, sourceNick, "mode/"+channel + " [" + mode + " " + sourceNick + "]");
 		scriptmanager.runOnEventScript(this, Event.RIGHTS, mode, sourceLogin, sourceHostname, mode, channel);
 		/*
 		if (mode.startsWith("+v")) {
@@ -379,14 +377,14 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 
 	@Override
 	protected void onTopic(final String channel, final String topic, final String setBy, final long date, final boolean changed) {
-		logger.logAction(channel, setBy + " sets topic to: " + topic, null);
+		logger.logAction(channel, setBy, setBy + " sets topic to: " + topic);
 		scriptmanager.runOnEventScript(this, Event.TOPIC, setBy, "" + date, null, topic, channel);
 	}
 
 
 	@Override
 	protected void onKick(final String channel, final String kickerNick, final String kickerLogin, final String kickerHostname, final String recipientNick, final String reason) {
-		logger.logAction(channel, recipientNick + " was kicked from " + channel + " by " + kickerNick + " ["+reason+"]", kickerNick);
+		logger.logAction(channel, kickerNick, recipientNick + " was kicked from " + channel + " by " + kickerNick + " ["+reason+"]");
 		log.fine("Kicked: " + recipientNick);
 		if (recipientNick.equals(getNick())) {
 			final MsLuvaLuva _this = this;
@@ -468,21 +466,21 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 
 	@Override
 	protected void onAction(final String sender, final String login, final String hostname, final String target, final String action) {
-		logger.logAction(target, "* " + sender + " " + action, sender, true);
+		logger.logAction(target, sender, "* " + sender + " " + action, true);
 		super.onAction(sender, login, hostname, target, action);
 		scriptmanager.runOnEventScript(this, Event.ACTION, sender, login, hostname, action, target);
 	}
 
 	@Override
 	protected void onQuit(final String sourceNick, final String sourceLogin, final String sourceHostname, final String reason) {
-		logger.logAction(null, sourceNick + " [" + sourceLogin + "@" + sourceHostname + "] has quit [" + reason + "]", sourceNick);
+		logger.logAction(null, sourceNick, sourceNick + " [" + sourceLogin + "@" + sourceHostname + "] has quit [" + reason + "]");
 		super.onQuit(sourceNick, sourceLogin, sourceHostname, reason);
 		scriptmanager.runOnEventScript(this, Event.QUIT, sourceNick, sourceLogin, sourceHostname, reason, null);
 	}
 
 	@Override
 	protected void onPart(final String channel, final String sender, final String login, final String hostname, final String reason) {
-		logger.logAction(null, sender + " [" + login + "@" + hostname + "] has left " + channel + " [" + reason + "]", sender);
+		logger.logAction(null, sender, sender + " [" + login + "@" + hostname + "] has left " + channel + " [" + reason + "]");
 		scriptmanager.runOnEventScript(this, Event.LEAVE, sender, login, hostname, reason, channel);
 	}
 
@@ -610,22 +608,21 @@ public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 	}
 
 	private boolean actOnTrigger(final String sender, final String login, final String hostname, final String message, final String _channel) {
+		boolean retval = false;
 		String channel = _channel;
 		if (_channel == null) {
 			channel = sender;
 		}
 		String[] tmp = message.split(" ", 2);
 		String cmd = tmp[0].substring(properties.getString("trigger").length());
-		String param;
-		if (tmp.length == 1) {
-			param = sender;
-		} else {
-			param = tmp[1].trim();
-		}
-
-		boolean retval = false;
-		// make sure it's a valid ASCII string 
+		// make sure it's a valid ASCII string
 		if (cmd.matches("[0-9a-zA-Z_]+")) {
+			String param;
+			if (tmp.length == 1) {
+				param = sender;
+			} else {
+				param = tmp[1].trim();
+			}
 			retval = scriptmanager.runTriggerScript(this,
 					sender, login, hostname, message, channel, cmd, param);
 		}
