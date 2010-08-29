@@ -1,8 +1,9 @@
 package com.popodeus.chat;
 
-import junit.framework.Test;
-import junit.framework.TestCase;
-import junit.framework.TestSuite;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import static org.junit.Assert.*;
 
 import java.io.File;
 import java.util.Iterator;
@@ -12,21 +13,19 @@ import java.util.logging.Level;
 /**
  * ChatLogger Tester
  */
-public class ChatLoggerTest extends TestCase {
+public class ChatLoggerTest {
 	private ChatLogger logger;
 	private	File logdir;
-	
-	public ChatLoggerTest(String name) {
-        super(name);
-    }
-	
+
+	@Before
     public void setUp() throws Exception {
 		Logger.getLogger(ChatLogger.class.getName()).setLevel(Level.OFF);
-		logdir =  new File("/tmp", "chatlogger");
+		logdir = new File("/tmp", "chatlogger");
 		logdir.mkdirs();
 		logger = new ChatLogger(logdir);
     }
 
+	@After
     public void tearDown() throws Exception {
 		logger.closeAll();
 		for (File f : logdir.listFiles()) {
@@ -40,6 +39,7 @@ public class ChatLoggerTest extends TestCase {
      * Method: joinChannel(final String _channel)
      *
      */
+	@Test
     public void testJoinChannel() throws Exception {
 		final String chan = "#Testing";
 		final String chanlog = "testing.log";
@@ -53,16 +53,26 @@ public class ChatLoggerTest extends TestCase {
 		assertTrue(logger.hasJoined(chan));
 		assertFalse(logger.hasJoined("#NotHere"));
 		assertTrue(logfile.exists());
+		// Not true, the logger writes "--- Log opened " + new Date()
+		// assertEquals(0L, logfile.length());
+		long len = logfile.length();
+		assertTrue(len > 0);
 
 		assertNull(logger.getLastActivity(chan, nickname));
 		logger.log(chan, nickname, "Saying something");
+		assertNotNull(logger.getLastLine(chan));
+		assertEquals(nickname, logger.getLastLine(chan).nick);
 		assertNotNull(logger.getLastActivity(chan, nickname));
 		logger.leaveChannel(chan);
+		// Log should have grown
+		assertTrue(logfile.length() > len);
 
+		//Logger.getLogger(ChatLogger.class.getName()).setLevel(Level.FINEST);
 		logger.joinChannel(chan);
-		System.out.println(logger.getLastLine(chan));
+		//System.out.println("Last line said on " + chan + ": " + logger.getLastLine(chan));
 		assertNotNull(logger.getLastActivity(chan, nickname));
 		logger.leaveChannel(chan);
+		//Logger.getLogger(ChatLogger.class.getName()).setLevel(Level.OFF);
 	}
 	
 	/**
@@ -70,11 +80,17 @@ public class ChatLoggerTest extends TestCase {
      * Method: leaveChannel(final String _channel)
      *
      */
+	@Test
     public void testLeaveChannel() throws Exception {
 		logger.joinChannel("#Testing");
 		assertTrue(logger.hasJoined("#Testing"));
 		logger.leaveChannel("#Testing");
 		assertFalse(logger.hasJoined("#Testing"));
+		logger.joinChannel("#Testing-2");
+		assertTrue(logger.hasJoined("#Testing-2"));
+		assertFalse(logger.hasJoined("#Testing"));
+		logger.leaveChannel("#Testing-2");
+		assertFalse(logger.hasJoined("#Testing-2"));
     }
 
     /**
@@ -119,6 +135,7 @@ public class ChatLoggerTest extends TestCase {
      * Method: closeAll()
      *
      */
+	@Test
     public void testCloseAll() throws Exception {
 		logger.joinChannel("#Testing1");
 		logger.joinChannel("#Testing2");
@@ -134,6 +151,7 @@ public class ChatLoggerTest extends TestCase {
      * Method: getLastLine(final String channel)
      *
      */
+	@Test
     public void testGetLastLine() throws Exception {
 		final String helloworld = "Hello world!";
 		final String channel = "#Testing";
@@ -151,6 +169,7 @@ public class ChatLoggerTest extends TestCase {
      * Method: getLastActivity(final String _channel, final String nick)
      *
      */
+	@Test
     public void testGetLastActivity1() throws Exception {
 		final String xchan = "x1";
 		final String someone = "someone";
@@ -161,14 +180,26 @@ public class ChatLoggerTest extends TestCase {
 		assertNotNull(logger.getLastActivity(xchan, someone));
 	}
 
+	@Test
 	public void testGetLastActivity2() throws Exception {
 		final String xchan2 = "x2";
-		final String someone = "someone";
+		final String nickname = "someone";
+		final String nickname2 = "someonelse";
 
 		logger.joinChannel(xchan2);
-		assertNull(logger.getLastActivity(xchan2, someone));
-		logger.logAction(xchan2, someone, "Hello");
-		assertNotNull(logger.getLastActivity(xchan2, someone));
+		assertNull(logger.getLastActivity(xchan2, nickname));
+
+		logger.logAction(xchan2, nickname, "* " + nickname + " says Hello World!");
+		logger.logAction(xchan2, nickname2, "* " + nickname2 + " says Hello Moon!");
+		assertNotNull(logger.getLastActivity(xchan2, nickname));
+		assertNotNull(logger.getLastLine(xchan2));
+		//System.out.println("logger.getLastLine(chan = " + logger.getLastLine(xchan2));
+		//System.out.println("logger.getLastActivity(chan, nickname) = " + logger.getLastActivity(xchan2, nickname));
+		logger.leaveChannel(xchan2);
+
+		logger.joinChannel(xchan2);
+		assertNotNull(logger.getLastActivity(xchan2, nickname));
+		assertNotNull(logger.getLastActivity(xchan2, nickname2));
 	}
 
     /**
@@ -185,6 +216,7 @@ public class ChatLoggerTest extends TestCase {
      * Method: nickChange(final String oldNick, final String newNick)
      *
      */
+	@Test
     public void testNickChange() throws Exception {
 		final String chan = "foobar";
 
@@ -210,6 +242,7 @@ public class ChatLoggerTest extends TestCase {
      * Method: getLineCounts(final String channel, final int... minutes)
      *
      */
+	@Test
     public void testGetLineCounts() throws Exception {
 		final String chan = "foo";
 		
@@ -323,10 +356,5 @@ public class ChatLoggerTest extends TestCase {
         } catch(InvocationTargetException e) {
         }
         */
-        }
-
-
-    public static Test suite() {
-        return new TestSuite(ChatLoggerTest.class);
-    }
+	}
 }
