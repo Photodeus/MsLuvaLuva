@@ -26,7 +26,7 @@ function relativeTime(time, sayAgo) {
 	return datemsg;
 }
 
-var lnick = param.toLowerCase().replace(/_$/, '');
+var lnick = param.toLowerCase().replace(/[_ ]/g, '');
 var nostalk = API.getValue("nostalk." + lnick);
 
 if (param == nick) {
@@ -76,7 +76,7 @@ if (param == nick) {
 			response = param + " was seen " + dmsg + " saying \"" + msg + "\"" + qdata;
 		} else {
 			if (param.match(/your /)) param = param.replace("your ", "my ");
-			response = "Sorry, I haven't seen " + param + " after I joined channel " + relativeTime(API.getStartupTime() / 1000, true) + ".";
+			response = "Sorry, I haven't seen " + lnick + " after I joined channel " + relativeTime(API.getStartupTime() / 1000, true) + ".";
 			time = API.getLastActiveTime(param, channel);
 			if (time) {
 				time = time.longValue() / 1000;
