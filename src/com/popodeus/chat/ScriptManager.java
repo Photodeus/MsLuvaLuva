@@ -215,11 +215,16 @@ public class ScriptManager {
 		if (scripts != null) {
 			for (EventScript eventscript : scripts) {
 				log.finest("evaluating: " + eventscript.getName());
-				if (eventscript.runScript(getAPI(eventscript), sender,
-						login, hostname, message,
-						channel, eventscript.getName(), message)) {
-					log.finer(eventscript.getName() + ": early cancel. No processing of other scripts");
-					break;
+				try {
+					if (eventscript.runScript(getAPI(eventscript), sender,
+							login, hostname, message,
+							channel, eventscript.getName(), message)) {
+						log.finer(eventscript.getName() + ": early cancel. No processing of other scripts");
+						break;
+					}
+				} catch (Exception e) {
+					// Since script failed, so we assume it's broken
+					// We do nothing here other than keep looping
 				}
 			}
 		} else {
@@ -276,8 +281,12 @@ public class ScriptManager {
 				final String timeoutmsg = "Too fast - Timeout is " + Math.round(triggerScript.getTimeout() / 100) / 10 + "s. Try again later.";
 				bot.notice(sender, timeoutmsg);
 			} else {
-				return triggerScript.runScript(getAPI(triggerScript), sender, login, hostname, message,
-						channel, cmd, param);
+				try {
+					return triggerScript.runScript(getAPI(triggerScript), sender, login, hostname, message,
+							channel, cmd, param);
+				} catch (Exception e) {
+					// Do nothing, just let the executor finish
+				}
 			}
 			/*
 			Scriptable response = (Scriptable) bindings.get(SCRIPTVAR_RESPONSE);
