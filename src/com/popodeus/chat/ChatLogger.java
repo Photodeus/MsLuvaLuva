@@ -42,7 +42,6 @@ public final class ChatLogger {
 			this.line = line;
 		}
 
-		@Override
 		public int compareTo(final Object o) {
 			if (o instanceof ChatLine) {
 				ChatLine cl = (ChatLine) o;
@@ -59,12 +58,12 @@ public final class ChatLogger {
 	}
 
 	class ActionLine extends ChatLine {
-		ActionLine(final String line) {
-			super(null, line);
+		ActionLine(final String nick, final String line) {
+			super(nick, line);
 		}
 
-		ActionLine(final long timestamp, final String line) {
-			super(timestamp, null, line);
+		ActionLine(final long timestamp, final String nick, final String line) {
+			super(timestamp, nick, line);
 		}
 
 		@Override
@@ -95,7 +94,7 @@ public final class ChatLogger {
 			String line = null;
 			try {
 				if (logfile.exists()) {
-					logger.info("Opening log file: " + logfile);
+					logger.info("Opening existing log file: " + logfile);
 					ReverseFileReader rfr = new ReverseFileReader(logfile);
 					int readlines = 0;
 					do {
@@ -117,12 +116,12 @@ public final class ChatLogger {
 								chatline = new ChatLine(ts, nick, p[2].substring(nickend + 2));
 								touch(nick, ts);
 							} else if (p[2].startsWith("-!- ")) {
-								chatline = new ActionLine(ts, line);
-								String nick = p[2].substring(5, line.indexOf(" ", 6));
+								String nick = p[2].substring(4, p[2].indexOf(" ", 5));
+								chatline = new ActionLine(ts, nick, p[2]);
 								touch(nick, ts);
 							} else if (p[2].startsWith("* ")) {
-								chatline = new ActionLine(ts, line);
-								String nick = p[2].substring(3, line.indexOf(" ", 3));
+								String nick = p[2].substring(2, p[2].indexOf(" ", 3));
+								chatline = new ActionLine(ts, nick, p[2]);
 								touch(nick, ts);
 							}
 							if (lastlogDay < 0) {
@@ -131,12 +130,15 @@ public final class ChatLogger {
 								lastlogDay = cal.get(Calendar.DAY_OF_MONTH);
 							}
 							if (chatline != null) {
+								//System.out.println("\""+ chatline + "\" (" + chatline.getClass() + ")");
 								this.lines.offerLast(chatline);
 							}
 						}
 					} while (++readlines < BACKLINES);
 					rfr.close();
 					logger.fine("Read back " + readlines);
+				} else {
+					logger.fine("No previous logfile exists");
 				}
 			} catch (Exception e) {
 				logger.severe((line != null ? line + ": " : "") + e);
@@ -176,9 +178,9 @@ public final class ChatLogger {
 			}
 		}
 
-		public void logAction(final String line) {
+		public void logAction(final String nick, final String line) {
 			try {
-				addit(new ActionLine(line));
+				addit(new ActionLine(nick, line));
 			} catch (Exception e) {
 				logger.log(Level.SEVERE, e.toString(), e);
 			}
@@ -189,14 +191,16 @@ public final class ChatLogger {
 				ChatLine out = lines.pollLast();
 				// right now we don't need the line that is removed from the buffer
 			}
-			lines.offerFirst(line);
 			Calendar cal = new GregorianCalendar();
 			cal.setTimeInMillis(line.timestamp);
 			int daynow = cal.get(Calendar.DAY_OF_MONTH);
 			if (daynow != lastlogDay) {
 				writer.write("--- Date changed to " + cal.getTime());
+				writer.newLine();
 				lastlogDay = daynow;
 			}
+
+			lines.offerFirst(line);
 			writer.write(line.toString());
 			writer.newLine();
 		}
@@ -308,14 +312,14 @@ public final class ChatLogger {
 		}
 	}
 
-	public void logAction(final String channel, final String line, final String nick) {
-		logAction(channel, line, nick, true);
+	public void logAction(final String channel, final String nick, final String line) {
+		logAction(channel, nick, line, true);
 	}
 
-	public void logAction(final String channel, final String line, final String nick, boolean flush) {
+	public void logAction(final String channel, final String nick, final String line, boolean flush) {
 		if (channel == null) {
 			for (ChannelLog log : channels.values()) {
-				log.logAction(line);
+				log.logAction(nick, line);
 				if (flush) {
 					log.flush();
 				}
@@ -326,7 +330,7 @@ public final class ChatLogger {
 		} else {
 			ChannelLog output = channels.get(channel.toLowerCase());
 			if (output != null) {
-				output.logAction(line);
+				output.logAction(nick, line);
 				if (flush) {
 					output.flush();
 				}
@@ -436,13 +440,11 @@ public final class ChatLogger {
 		final Iterator<ChatLine> it = log.lines.iterator();
 		while (it.hasNext()) {
 			ChatLine line = it.next();
-			//System.out.println(line);
 			long linetime = line.timestamp;
 			long delta = (now - linetime) / (60 * 1000);
 			if (delta > maxdelta) {
 				break;
 			}
-			//System.out.println("  delta: " + delta + "m");
 			int i = 0;
 			for (Map.Entry<Integer, Integer> min : linecounts.entrySet()) {
 				Integer timelimit = min.getKey();
