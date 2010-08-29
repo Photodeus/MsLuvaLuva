@@ -1,12 +1,9 @@
 package com.popodeus.chat;
 
-import com.sun.script.javascript.RhinoScriptEngine;
-
-import javax.script.Bindings;
-import javax.script.CompiledScript;
-import javax.script.SimpleBindings;
+import javax.script.*;
 import java.io.BufferedReader;
 import java.io.Reader;
+import java.util.Map;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -36,27 +33,63 @@ public abstract class ScriptBase {
 	public static final String SCRIPTVAR_NO_TIMEOUT = "no_timeout";
 	public static final String SCRIPTVAR_API = "API";
 
-	private Pattern ptrn = Pattern.compile(".*@timeout\\s+(\\d+)\\d+.*");
+	private Pattern ptrn = Pattern.compile(".*@timeout\\s+(\\d+).*");
 	private Pattern notimeout = Pattern.compile(".*@notimeout.*");
-	private static RhinoScriptEngine engine;
+	private static ScriptEngine engine;
 	private static long DEFAULT_TIMEOUT = 10 * 1000L; // milliseconds
-	private CompiledScript csc;
+	//private CompiledScript csc;
 	protected Logger log = Logger.getLogger("com.popodeus.chat.ScriptBase");
 	private long lastRun;
 	private long timeout = DEFAULT_TIMEOUT;
 	private String name;
 	private StringBuilder source;
-	private Bindings b;
+	protected ProtectedBindings b;
 	final LinkedBlockingDeque<Long> runtimes;
 
+	class ProtectedBindings extends SimpleBindings {
+		boolean isProtected = false;
+
+		ProtectedBindings(boolean aProtected) {
+			isProtected = aProtected;
+		}
+
+		public boolean isProtected() {
+			return isProtected;
+		}
+
+		public void setProtected(boolean aProtected) {
+			isProtected = aProtected;
+		}
+		@Override
+		public Object put(String name, Object value) {
+			if (isProtected() && SCRIPTVAR_API.equals(name)) {
+				return null;
+			}
+			return super.put(name, value);
+		}
+
+		@Override
+		public void putAll(Map<? extends String, ? extends Object> toMerge) {
+			if (isProtected() && toMerge != null && toMerge.containsKey(SCRIPTVAR_API)) toMerge.remove(SCRIPTVAR_API);
+			super.putAll(toMerge);
+		}
+
+		@Override
+		public Object remove(Object key) {
+			if (isProtected() && SCRIPTVAR_API.equals(key)) {
+				return null;
+			}
+			return super.remove(key);
+		}
+	}
 	public ScriptBase(final String name, final Reader src) {
 		if (engine == null) {
-			engine = new RhinoScriptEngine();
+			engine = new ScriptEngineManager().getEngineByExtension("js");
 			//engine.setContext(ContextFactory.getGlobal().);
 		}
 		this.name = name;
 		// TODO restore bindings from file on startup?
-		this.b = new SimpleBindings();
+		this.b = new ProtectedBindings(false);
 		this.runtimes = new LinkedBlockingDeque<Long>(50);
 		boolean timeout_found = false;
 		try {
@@ -88,7 +121,7 @@ public abstract class ScriptBase {
 			//timeout = getTimeoutForScript(scriptsrc, 10000);
 			log.finest("Timeout is " + timeout + "ms");
 			//scriptsrc.reset();
-			csc = engine.compile(source.toString());
+			//csc = engine.compile(source.toString());
 		} catch (Exception e) {
 			System.err.println(name);
 			e.printStackTrace();
@@ -135,12 +168,16 @@ public abstract class ScriptBase {
 							 final String message,
 							 final String channel,
 							 final String cmd,
-							 final String param) {
+							 final String param) throws Exception {
 		return runScript(API,
 				new ScriptInvokerParameters(sender, login, hostname, message, channel, cmd, param));
 	}
 
-	public boolean runScript(final ScriptAPI API, final ScriptInvokerParameters params) {
+	/**
+	 *
+	 * @return Returns true if the script says there is no need for a timeout until next invocation
+	 */
+	public boolean runScript(final ScriptAPI API, final ScriptInvokerParameters params) throws Exception {
 		if (source == null || source.length() <= 10) {
 			return false;
 		}
@@ -165,13 +202,16 @@ public abstract class ScriptBase {
 			b.remove(SCRIPTVAR_RESPONSE_TO);
 			b.remove(SCRIPTVAR_NO_TIMEOUT);
 
+			b.setProtected(true);
+
 			log.finest("evaluating " + name + "...");
 			long nano = System.nanoTime();
 
 			// Evalute the script here
 			// TODO add a way to stop the evaluation if it takes too long
 			//Context ctx = Context.enter();
-			Object retval = csc.eval(b);
+            engine.put(ScriptEngine.FILENAME, name + ".js");
+			Object retval = engine.eval(source.toString(), b); //csc.eval(b);
 			//Object retval = engine.eval(source.toString(), b);
 			log.finest("retval: " + retval);
 			//Context.exit();
@@ -200,11 +240,12 @@ public abstract class ScriptBase {
 					API.say(to, response.toString());
 				}
 			}
-			if (b.get(SCRIPTVAR_NO_TIMEOUT) != null) {
+			if (timeout == 0 || (b.get(SCRIPTVAR_NO_TIMEOUT) != null && b.get(SCRIPTVAR_NO_TIMEOUT).equals(true))) {
 				return true;
 			}
 		} catch (Exception e) {
 			log.log(Level.SEVERE, name + ": " + e.getMessage(), e);
+			throw e;
 			//System.err.println(e);
 			//e.printStackTrace();
 		}
