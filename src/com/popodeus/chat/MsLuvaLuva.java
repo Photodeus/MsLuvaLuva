@@ -23,7 +23,7 @@ import java.util.regex.Pattern;
  */
 public class MsLuvaLuva extends PircBot implements Runnable, BotCallbackAPI {
 	
-	private float version = 1.7f;
+	private float version = 3.4f;
 	private Logger log = Logger.getLogger("com.popodeus.chat.MsLuvaLuva");
 	private Thread runner;
 	protected Random random;
