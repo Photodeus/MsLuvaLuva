@@ -68,6 +68,7 @@
 			<classpath path="bin/" />
 			<formatter type="brief" usefile="false"/>
 			<test name="com.popodeus.chat.ChatLoggerTest"/>
+			<test name="com.popodeus.chat.ScriptBaseTest"/>
 		</junit>
 	</target>
 
