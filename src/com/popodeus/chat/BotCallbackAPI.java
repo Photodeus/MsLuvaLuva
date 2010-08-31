@@ -115,4 +115,6 @@ public interface BotCallbackAPI {
 	ResourceBundle getMessges();
 
 	ResourceBundle getConfig();
+
+	String getVersion();
 }
