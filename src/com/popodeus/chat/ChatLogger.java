@@ -445,7 +445,6 @@ public final class ChatLogger {
 			if (delta > maxdelta) {
 				break;
 			}
-			int i = 0;
 			for (Map.Entry<Integer, Integer> min : linecounts.entrySet()) {
 				Integer timelimit = min.getKey();
 				if (delta <= timelimit) {
