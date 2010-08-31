@@ -59,7 +59,6 @@
 
 	<target name="test" depends="compile">
 		<javac
-				executable="${jdk.home}/bin/javac"
 				target="1.5"
 				classpathref="classpath"
 				srcdir="test/"
