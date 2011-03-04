@@ -2,9 +2,9 @@
 <project name="MsLuvaLuva IRC bot" default="compile" basedir=".">
 
 	<property file="build.properties"/>
+	<property prefix="config" file="src/config.properties"/>
 
 	<path id="classpath">
-<!--		<fileset dir="${jdk.home}/jre/lib/" includes="**/*.jar"/> -->
 		<fileset dir="lib/" includes="**/*.jar"/>
 	</path>
 
@@ -16,8 +16,7 @@
 	
 	<target name="compile">
 		<mkdir dir="bin"/>
-
-		<javac
+   		<javac
 				target="1.5"
 				classpathref="classpath"
 				srcdir="src/"
@@ -25,6 +24,19 @@
 	</target>
 
 	<target name="jar" depends="compile">
+		<echo message="Config script dir: ${config.script.dir}" />
+		<echo message="Script variable write dir: ${config.script.variable.dir}" />
+		
+		<echo />
+		<echo message="Verifying bot configuration file in 'src/config.properties'." />
+		<fail unless="config.nick" message="Must configure bot nick and altnick!" />
+		<fail unless="config.altnick" message="Must configure bot nick and altnick!" />
+		<fail unless="config.channels" message="Need at least one initial channel to join. Add multiple channel names separated by a comma" />
+		<fail unless="config.script.variable.dir" message="script.variable.dir needs to be set to a writable directory" />
+		<fail unless="config.log.dir" message="log.dir needs to be set to a writable directory" />
+		<mkdir dir="${config.script.variable.dir}" />
+		<mkdir dir="${config.log.dir}" />
+
 		<mkdir dir="dist/"/>
 		<delete file="dist/${build.jar}" />
 
@@ -68,6 +80,18 @@
 			<test name="com.popodeus.chat.ChatLoggerTest"/>
 			<test name="com.popodeus.chat.ScriptBaseTest"/>
 		</junit>
+	</target>
+	
+	<target name="run" depends="jar">
+		<echo message="Running bot. Telnet port is ${config.telnet.port} for remote control" />
+		
+		<echo message="Server is ${config.server} and channels to join: ${config.channels}" />
+		<java jar="dist/${build.jar}"
+			fork="true"
+			maxmemory="64m"
+			failonerror="true"
+			/>
+		
 	</target>
 
 </project>
