@@ -1,11 +1,9 @@
 package test.com.popodeus.chat;
-
-import com.sun.script.javascript.RhinoScriptEngine;
-
+/*
 import javax.script.ScriptException;
 import javax.script.ScriptEngine;
 import javax.script.ScriptContext;
-
+*/
 import net.sourceforge.htmlunit.corejs.javascript.ContextFactory;
 
 /**
@@ -16,6 +14,7 @@ import net.sourceforge.htmlunit.corejs.javascript.ContextFactory;
 public class TerminateScript {
 
 	public static void main(String[] args) {
+		/*
 		final String script =
 			"function SayIt() {\n" +
 			"	print('I would say x = ' + x);\n" +
@@ -28,7 +27,7 @@ public class TerminateScript {
 		try {
 			ContextFactory factory = new ContextFactory();
 
-			final RhinoScriptEngine engine =  new RhinoScriptEngine();
+			final ScriptEngine engine =  new ScriptEngine();
 			ScriptContext ctx = engine.getContext();
 
 			long milli = System.currentTimeMillis();
@@ -45,7 +44,6 @@ public class TerminateScript {
 		} catch (ScriptException e) {
 			e.printStackTrace();
 		}
-
-
+		*/
 	}
 }
